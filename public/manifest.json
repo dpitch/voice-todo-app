@@ -3,9 +3,12 @@
   "short_name": "VoiceTodo",
   "description": "App PWA pour ajouter des to-dos a la voix, classes automatiquement par IA",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#1a1a1a",
   "theme_color": "#8b5cf6",
+  "categories": ["productivity", "utilities"],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
