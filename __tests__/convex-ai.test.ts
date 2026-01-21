@@ -1,4 +1,4 @@
-import { transcribeAudio } from "../convex/ai";
+import { transcribeAudio, classifyTodo } from "../convex/ai";
 
 describe("Convex AI Actions", () => {
   describe("transcribeAudio action", () => {
@@ -17,6 +17,25 @@ describe("Convex AI Actions", () => {
     it("should have a handler function", () => {
       expect(transcribeAudio.handler).toBeDefined();
       expect(typeof transcribeAudio.handler).toBe("function");
+    });
+  });
+
+  describe("classifyTodo action", () => {
+    it("should be defined", () => {
+      expect(classifyTodo).toBeDefined();
+    });
+
+    it("should be an action function", () => {
+      expect(classifyTodo).toHaveProperty("isAction", true);
+    });
+
+    it("should require content argument", () => {
+      expect(classifyTodo.args).toHaveProperty("content");
+    });
+
+    it("should have a handler function", () => {
+      expect(classifyTodo.handler).toBeDefined();
+      expect(typeof classifyTodo.handler).toBe("function");
     });
   });
 });
