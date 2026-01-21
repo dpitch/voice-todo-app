@@ -1,4 +1,4 @@
-import { create, list, listByCategory, toggleComplete, updateCategory } from "../convex/todos";
+import { create, list, listByCategory, toggleComplete, updateCategory, remove } from "../convex/todos";
 
 describe("Convex Todos Query", () => {
   describe("list query", () => {
@@ -117,6 +117,25 @@ describe("Convex Todos Query", () => {
     it("should have a handler function", () => {
       expect(updateCategory.handler).toBeDefined();
       expect(typeof updateCategory.handler).toBe("function");
+    });
+  });
+
+  describe("remove mutation", () => {
+    it("should be defined", () => {
+      expect(remove).toBeDefined();
+    });
+
+    it("should be a mutation function", () => {
+      expect(remove).toHaveProperty("isMutation", true);
+    });
+
+    it("should require id argument", () => {
+      expect(remove.args).toHaveProperty("id");
+    });
+
+    it("should have a handler function", () => {
+      expect(remove.handler).toBeDefined();
+      expect(typeof remove.handler).toBe("function");
     });
   });
 });
