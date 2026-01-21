@@ -156,3 +156,44 @@
 .animate-processing-spin {
   animation: spin 1s linear infinite;
 }
+
+/* Card fade-in animation */
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Card slide-in animation (from bottom) */
+@keyframes card-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Combined fade and slide animation for cards */
+.animate-card-fade-in {
+  animation: card-fade-in 0.3s ease-out forwards;
+}
+
+.animate-card-slide-in {
+  animation: card-slide-in 0.3s ease-out forwards;
+}
+
+/* Default card transition for smooth state changes */
+[data-slot="card"] {
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Todo item specific animation - combines fade and slide */
+[data-slot="todo-item"] {
+  animation: card-slide-in 0.3s ease-out forwards;
+}
