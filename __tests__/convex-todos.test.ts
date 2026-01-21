@@ -1,4 +1,4 @@
-import { list, listByCategory } from "../convex/todos";
+import { create, list, listByCategory } from "../convex/todos";
 
 describe("Convex Todos Query", () => {
   describe("list query", () => {
@@ -36,6 +36,45 @@ describe("Convex Todos Query", () => {
     it("should have a handler function", () => {
       expect(listByCategory.handler).toBeDefined();
       expect(typeof listByCategory.handler).toBe("function");
+    });
+  });
+
+  describe("create mutation", () => {
+    it("should be defined", () => {
+      expect(create).toBeDefined();
+    });
+
+    it("should be a mutation function", () => {
+      expect(create).toHaveProperty("isMutation", true);
+    });
+
+    it("should require content argument", () => {
+      expect(create.args).toHaveProperty("content");
+    });
+
+    it("should require category argument", () => {
+      expect(create.args).toHaveProperty("category");
+    });
+
+    it("should require priority argument", () => {
+      expect(create.args).toHaveProperty("priority");
+    });
+
+    it("should require isCompleted argument", () => {
+      expect(create.args).toHaveProperty("isCompleted");
+    });
+
+    it("should have optional completedAt argument", () => {
+      expect(create.args).toHaveProperty("completedAt");
+    });
+
+    it("should require createdAt argument", () => {
+      expect(create.args).toHaveProperty("createdAt");
+    });
+
+    it("should have a handler function", () => {
+      expect(create.handler).toBeDefined();
+      expect(typeof create.handler).toBe("function");
     });
   });
 });

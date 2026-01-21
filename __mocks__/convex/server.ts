@@ -6,6 +6,14 @@ export const query = (config: {
   isQuery: true,
 });
 
+export const mutation = (config: {
+  args: object;
+  handler: (...args: unknown[]) => unknown;
+}) => ({
+  ...config,
+  isMutation: true,
+});
+
 interface TableConfig {
   validator: { kind: string; fields: Record<string, unknown> };
   indexes: Array<{ indexDescriptor: string; fields: string[] }>;
