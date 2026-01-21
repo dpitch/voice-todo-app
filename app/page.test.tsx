@@ -9,8 +9,14 @@ jest.mock("convex/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
 }));
 
+// Store the captured onDragEnd handler from DndContext
+let capturedOnDragEnd: ((event: unknown) => void) | null = null;
+
 jest.mock("@dnd-kit/core", () => ({
-  DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DndContext: ({ children, onDragEnd }: { children: React.ReactNode; onDragEnd?: (event: unknown) => void }) => {
+    capturedOnDragEnd = onDragEnd || null;
+    return <>{children}</>;
+  },
   DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useSensor: jest.fn(),
   useSensors: jest.fn(() => []),
@@ -350,6 +356,140 @@ describe("Home page", () => {
       render(<Home />);
 
       expect(screen.queryByRole("group", { name: /filter by category/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("drag and drop to category", () => {
+    beforeEach(() => {
+      capturedOnDragEnd = null;
+    });
+
+    it("calls updateCategory when a todo is dropped on a different category chip", async () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy groceries",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+        {
+          _id: "todo-2",
+          content: "Finish report",
+          category: "Work",
+          priority: "high",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      // Simulate a drag end event where todo-1 is dropped on Work category chip
+      if (capturedOnDragEnd) {
+        capturedOnDragEnd({
+          active: { id: "todo-1" },
+          over: {
+            id: "category-drop-Work",
+            data: { current: { type: "category", category: "Work" } },
+          },
+        });
+      }
+
+      await waitFor(() => {
+        expect(mockUpdateCategory).toHaveBeenCalledWith({
+          id: "todo-1",
+          category: "Work",
+        });
+      });
+    });
+
+    it("does not call updateCategory when a todo is dropped on the same category", async () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy groceries",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      // Simulate a drag end event where todo-1 is dropped on its own category
+      if (capturedOnDragEnd) {
+        capturedOnDragEnd({
+          active: { id: "todo-1" },
+          over: {
+            id: "category-drop-Shopping",
+            data: { current: { type: "category", category: "Shopping" } },
+          },
+        });
+      }
+
+      await waitFor(() => {
+        expect(mockUpdateCategory).not.toHaveBeenCalled();
+      });
+    });
+
+    it("does not call updateCategory when a todo is dropped on nothing", async () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy groceries",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      // Simulate a drag end event where todo is dropped on nothing
+      if (capturedOnDragEnd) {
+        capturedOnDragEnd({
+          active: { id: "todo-1" },
+          over: null,
+        });
+      }
+
+      await waitFor(() => {
+        expect(mockUpdateCategory).not.toHaveBeenCalled();
+      });
+    });
+
+    it("does not call updateCategory when a todo is dropped on a non-category element", async () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy groceries",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      // Simulate a drag end event where todo is dropped on a non-category element
+      if (capturedOnDragEnd) {
+        capturedOnDragEnd({
+          active: { id: "todo-1" },
+          over: {
+            id: "some-other-element",
+            data: { current: { type: "other" } },
+          },
+        });
+      }
+
+      await waitFor(() => {
+        expect(mockUpdateCategory).not.toHaveBeenCalled();
+      });
     });
   });
 });
