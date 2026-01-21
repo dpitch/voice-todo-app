@@ -139,4 +139,43 @@ describe("TodoItem component", () => {
     const card = document.querySelector("[data-slot='todo-item']");
     expect(card).toHaveClass("custom-class");
   });
+
+  describe("drag handle (useSortable)", () => {
+    it("renders the drag handle button", () => {
+      render(<TodoItem {...defaultProps} />);
+      const dragHandle = document.querySelector("[data-slot='drag-handle']");
+      expect(dragHandle).toBeInTheDocument();
+    });
+
+    it("drag handle has accessible label", () => {
+      render(<TodoItem {...defaultProps} />);
+      const dragHandle = screen.getByRole("button", { name: /drag to reorder/i });
+      expect(dragHandle).toBeInTheDocument();
+    });
+
+    it("drag handle has cursor-grab class", () => {
+      render(<TodoItem {...defaultProps} />);
+      const dragHandle = document.querySelector("[data-slot='drag-handle']");
+      expect(dragHandle).toHaveClass("cursor-grab");
+    });
+
+    it("drag handle has touch-none class for touch devices", () => {
+      render(<TodoItem {...defaultProps} />);
+      const dragHandle = document.querySelector("[data-slot='drag-handle']");
+      expect(dragHandle).toHaveClass("touch-none");
+    });
+
+    it("drag handle receives sortable attributes", () => {
+      render(<TodoItem {...defaultProps} />);
+      const dragHandle = document.querySelector("[data-slot='drag-handle']");
+      expect(dragHandle).toHaveAttribute("role", "button");
+      expect(dragHandle).toHaveAttribute("tabIndex", "0");
+    });
+
+    it("has data-dragging attribute set to false by default", () => {
+      render(<TodoItem {...defaultProps} />);
+      const card = document.querySelector("[data-slot='todo-item']");
+      expect(card).toHaveAttribute("data-dragging", "false");
+    });
+  });
 });
