@@ -10,16 +10,59 @@ describe("Convex Schema", () => {
     const todosTable = schema.tables.todos;
     expect(todosTable).toBeDefined();
 
-    // The table should have validators for text, completed, and order
     const validator = todosTable.validator;
     expect(validator).toBeDefined();
     expect(validator.kind).toBe("object");
 
     // Check field names exist in the validator
     const fields = validator.fields;
-    expect(fields).toHaveProperty("text");
-    expect(fields).toHaveProperty("completed");
-    expect(fields).toHaveProperty("order");
+    expect(fields).toHaveProperty("content");
+    expect(fields).toHaveProperty("category");
+    expect(fields).toHaveProperty("priority");
+    expect(fields).toHaveProperty("isCompleted");
+    expect(fields).toHaveProperty("completedAt");
+    expect(fields).toHaveProperty("createdAt");
+  });
+
+  it("should have correct field types", () => {
+    const todosTable = schema.tables.todos;
+    const fields = todosTable.validator.fields;
+
+    // content should be a string
+    expect(fields.content.kind).toBe("string");
+
+    // category should be a string
+    expect(fields.category.kind).toBe("string");
+
+    // priority should be a union of literals
+    expect(fields.priority.kind).toBe("union");
+
+    // isCompleted should be a boolean
+    expect(fields.isCompleted.kind).toBe("boolean");
+
+    // completedAt should be optional (wrapped in optional validator)
+    // The inner type is float64, which is the actual stored type
+    expect(fields.completedAt.kind).toBe("float64");
+    expect(fields.completedAt.isOptional).toBe("optional");
+
+    // createdAt should be a number
+    expect(fields.createdAt.kind).toBe("float64");
+  });
+
+  it("should have indexes defined", () => {
+    const todosTable = schema.tables.todos;
+    const indexes = todosTable.indexes;
+
+    expect(indexes).toBeDefined();
+    expect(indexes).toHaveLength(4);
+
+    const indexNames = indexes.map(
+      (idx: { indexDescriptor: string }) => idx.indexDescriptor
+    );
+    expect(indexNames).toContain("by_category");
+    expect(indexNames).toContain("by_priority");
+    expect(indexNames).toContain("by_isCompleted");
+    expect(indexNames).toContain("by_createdAt");
   });
 
   it("should export a valid schema definition", () => {
