@@ -182,7 +182,148 @@ describe("Home page", () => {
 
     render(<Home />);
 
-    expect(screen.getByText("Shopping")).toBeInTheDocument();
-    expect(screen.getByText("Work")).toBeInTheDocument();
+    // Check for category headers in the todo list sections
+    const categoryHeaders = document.querySelectorAll("[data-slot='category-header']");
+    const headerTexts = Array.from(categoryHeaders).map(h => h.textContent);
+    expect(headerTexts.some(text => text?.includes("Shopping"))).toBe(true);
+    expect(headerTexts.some(text => text?.includes("Work"))).toBe(true);
+  });
+
+  describe("category filter", () => {
+    it("renders category filter chips for active todos", () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy milk",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+        {
+          _id: "todo-2",
+          content: "Finish report",
+          category: "Work",
+          priority: "high",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      const filterGroup = screen.getByRole("group", { name: /filter by category/i });
+      expect(filterGroup).toBeInTheDocument();
+    });
+
+    it("filters todos when a category chip is clicked", () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy milk",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+        {
+          _id: "todo-2",
+          content: "Finish report",
+          category: "Work",
+          priority: "high",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      // Both todos visible initially
+      expect(screen.getByText("Buy milk")).toBeInTheDocument();
+      expect(screen.getByText("Finish report")).toBeInTheDocument();
+
+      // Click on Shopping filter
+      const shoppingChip = screen.getByRole("button", { name: "Shopping" });
+      fireEvent.click(shoppingChip);
+
+      // Only Shopping todo should be visible
+      expect(screen.getByText("Buy milk")).toBeInTheDocument();
+      expect(screen.queryByText("Finish report")).not.toBeInTheDocument();
+    });
+
+    it("shows all todos when active filter is clicked again", () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Buy milk",
+          category: "Shopping",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+        {
+          _id: "todo-2",
+          content: "Finish report",
+          category: "Work",
+          priority: "high",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+      ]);
+
+      render(<Home />);
+
+      // Click on Shopping filter to activate it
+      const shoppingChip = screen.getByRole("button", { name: "Shopping" });
+      fireEvent.click(shoppingChip);
+
+      // Only Shopping todo visible
+      expect(screen.getByText("Buy milk")).toBeInTheDocument();
+      expect(screen.queryByText("Finish report")).not.toBeInTheDocument();
+
+      // Click again to deactivate filter
+      fireEvent.click(shoppingChip);
+
+      // Both todos should be visible again
+      expect(screen.getByText("Buy milk")).toBeInTheDocument();
+      expect(screen.getByText("Finish report")).toBeInTheDocument();
+    });
+
+    it("does not show filter chips for categories of completed todos only", () => {
+      mockUseQuery.mockReturnValue([
+        {
+          _id: "todo-1",
+          content: "Active task",
+          category: "Work",
+          priority: "medium",
+          isCompleted: false,
+          createdAt: Date.now(),
+        },
+        {
+          _id: "todo-2",
+          content: "Completed task",
+          category: "Personal",
+          priority: "low",
+          isCompleted: true,
+          completedAt: Date.now(),
+          createdAt: Date.now() - 1000,
+        },
+      ]);
+
+      render(<Home />);
+
+      // Work should have a filter chip (has active todos)
+      expect(screen.getByRole("button", { name: "Work" })).toBeInTheDocument();
+      // Personal should not have a filter chip (only completed todos)
+      expect(screen.queryByRole("button", { name: "Personal" })).not.toBeInTheDocument();
+    });
+
+    it("does not render filter chips when there are no active todos", () => {
+      mockUseQuery.mockReturnValue([]);
+
+      render(<Home />);
+
+      expect(screen.queryByRole("group", { name: /filter by category/i })).not.toBeInTheDocument();
+    });
   });
 });

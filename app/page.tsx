@@ -8,9 +8,11 @@ import { Header } from "@/components/header";
 import { TodoList, type Todo } from "@/components/todo-list";
 import { CompletedSection } from "@/components/completed-section";
 import { InputBar } from "@/components/input-bar";
+import { CategoryFilters } from "@/components/category-filters";
 
 export default function Home() {
   const [inputValue, setInputValue] = useState("");
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const todosData = useQuery(api.todos.list);
   const createTodo = useMutation(api.todos.create);
@@ -25,6 +27,10 @@ export default function Home() {
   }));
 
   const activeTodos = todos.filter((todo) => !todo.isCompleted);
+  const categories = [...new Set(activeTodos.map((todo) => todo.category))].sort();
+  const filteredTodos = activeFilter
+    ? activeTodos.filter((todo) => todo.category === activeFilter)
+    : activeTodos;
 
   const handleSubmit = async (value: string) => {
     await createTodo({
@@ -56,8 +62,13 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 pb-24">
+        <CategoryFilters
+          categories={categories}
+          activeCategory={activeFilter}
+          onCategoryChange={setActiveFilter}
+        />
         <TodoList
-          todos={activeTodos}
+          todos={filteredTodos}
           onToggleComplete={handleToggleComplete}
         />
         <CompletedSection
