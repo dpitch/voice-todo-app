@@ -1,5 +1,6 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 export const transcribeAudio = action({
   args: {
@@ -109,6 +110,43 @@ export const classifyTodo = action({
     return {
       category: parsed.category as string,
       priority: parsed.priority as "low" | "medium" | "high",
+    };
+  },
+});
+
+export const processVoiceTodo = action({
+  args: {
+    audioData: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Transcribe audio to text
+    const transcription = await ctx.runAction(api.ai.transcribeAudio, {
+      audioData: args.audioData,
+    });
+
+    if (!transcription.text || transcription.text.trim() === "") {
+      throw new Error("Transcription resulted in empty text");
+    }
+
+    // Step 2: Classify the todo (category + priority)
+    const classification = await ctx.runAction(api.ai.classifyTodo, {
+      content: transcription.text,
+    });
+
+    // Step 3: Create the todo
+    const todoId = await ctx.runMutation(api.todos.create, {
+      content: transcription.text,
+      category: classification.category,
+      priority: classification.priority,
+      isCompleted: false,
+      createdAt: Date.now(),
+    });
+
+    return {
+      todoId,
+      content: transcription.text,
+      category: classification.category,
+      priority: classification.priority,
     };
   },
 });

@@ -7,4 +7,9 @@ export const api = {
     updateCategory: "todos.updateCategory",
     remove: "todos.remove",
   },
+  ai: {
+    transcribeAudio: "ai.transcribeAudio",
+    classifyTodo: "ai.classifyTodo",
+    processVoiceTodo: "ai.processVoiceTodo",
+  },
 };
