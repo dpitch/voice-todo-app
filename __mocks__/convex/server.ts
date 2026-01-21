@@ -14,6 +14,14 @@ export const mutation = (config: {
   isMutation: true,
 });
 
+export const action = (config: {
+  args: object;
+  handler: (...args: unknown[]) => unknown;
+}) => ({
+  ...config,
+  isAction: true,
+});
+
 interface TableConfig {
   validator: { kind: string; fields: Record<string, unknown> };
   indexes: Array<{ indexDescriptor: string; fields: string[] }>;
