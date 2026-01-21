@@ -62,3 +62,22 @@ export const toggleComplete = mutation({
     return { ...todo, isCompleted, completedAt };
   },
 });
+
+export const updateCategory = mutation({
+  args: {
+    id: v.id("todos"),
+    category: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const todo = await ctx.db.get(args.id);
+    if (!todo) {
+      throw new Error("Todo not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      category: args.category,
+    });
+
+    return { ...todo, category: args.category };
+  },
+});
