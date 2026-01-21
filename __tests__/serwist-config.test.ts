@@ -21,7 +21,9 @@ describe("Serwist PWA Configuration", () => {
     it("should import Serwist from serwist", () => {
       const swPath = join(rootDir, "app", "sw.ts");
       const content = readFileSync(swPath, "utf-8");
-      expect(content).toContain('import { Serwist } from "serwist"');
+      // Multi-line import, check for both the class and the module
+      expect(content).toContain("Serwist");
+      expect(content).toContain('from "serwist"');
     });
 
     it("should configure Serwist with required options", () => {
