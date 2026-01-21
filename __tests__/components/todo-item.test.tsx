@@ -3,6 +3,7 @@ import { TodoItem, type Priority } from "@/components/todo-item";
 
 describe("TodoItem component", () => {
   const defaultProps = {
+    id: "test-todo-1",
     content: "Buy groceries",
     priority: "medium" as Priority,
     isCompleted: false,

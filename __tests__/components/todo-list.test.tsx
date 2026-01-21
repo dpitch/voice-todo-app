@@ -143,7 +143,7 @@ describe("CategorySection component", () => {
 
   it("can be collapsed when trigger is clicked", () => {
     render(<CategorySection category="Work" todos={categoryTodos} />)
-    const trigger = screen.getByRole("button")
+    const trigger = document.querySelector("[data-slot='collapsible-trigger']") as HTMLElement
     fireEvent.click(trigger)
 
     const content = document.querySelector("[data-slot='collapsible-content']")

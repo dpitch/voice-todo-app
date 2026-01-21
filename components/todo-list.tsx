@@ -9,6 +9,20 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible"
 import { ChevronDown } from "lucide-react"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
 
 export interface Todo {
   id: string
@@ -21,6 +35,7 @@ export interface Todo {
 export interface TodoListProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
+  onReorder?: (activeId: string, overId: string, category: string) => void
   className?: string
 }
 
@@ -37,6 +52,7 @@ interface CategorySectionProps {
   category: string
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
+  onReorder?: (activeId: string, overId: string, category: string) => void
   defaultOpen?: boolean
 }
 
@@ -44,10 +60,31 @@ function CategorySection({
   category,
   todos,
   onToggleComplete,
+  onReorder,
   defaultOpen = true,
 }: CategorySectionProps) {
   const completedCount = todos.filter((t) => t.isCompleted).length
   const totalCount = todos.length
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      onReorder?.(String(active.id), String(over.id), category)
+    }
+  }
+
+  const todoIds = todos.map((todo) => todo.id)
 
   return (
     <Collapsible defaultOpen={defaultOpen} data-slot="category-section">
@@ -74,32 +111,44 @@ function CategorySection({
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <ul
-          data-slot="category-todo-list"
-          className="flex flex-col gap-2 pl-6 pt-2"
-          role="list"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          {todos.map((todo) => (
-            <li key={todo.id}>
-              <TodoItem
-                content={todo.content}
-                priority={todo.priority}
-                isCompleted={todo.isCompleted}
-                onToggleComplete={
-                  onToggleComplete
-                    ? (checked) => onToggleComplete(todo.id, checked)
-                    : undefined
-                }
-              />
-            </li>
-          ))}
-        </ul>
+          <SortableContext
+            items={todoIds}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul
+              data-slot="category-todo-list"
+              className="flex flex-col gap-2 pl-6 pt-2"
+              role="list"
+            >
+              {todos.map((todo) => (
+                <li key={todo.id}>
+                  <TodoItem
+                    id={todo.id}
+                    content={todo.content}
+                    priority={todo.priority}
+                    isCompleted={todo.isCompleted}
+                    onToggleComplete={
+                      onToggleComplete
+                        ? (checked) => onToggleComplete(todo.id, checked)
+                        : undefined
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       </CollapsibleContent>
     </Collapsible>
   )
 }
 
-function TodoList({ todos, onToggleComplete, className }: TodoListProps) {
+function TodoList({ todos, onToggleComplete, onReorder, className }: TodoListProps) {
   const groupedTodos = groupTodosByCategory(todos)
   const categories = Array.from(groupedTodos.keys()).sort()
 
@@ -125,6 +174,7 @@ function TodoList({ todos, onToggleComplete, className }: TodoListProps) {
           category={category}
           todos={groupedTodos.get(category)!}
           onToggleComplete={onToggleComplete}
+          onReorder={onReorder}
         />
       ))}
     </div>
