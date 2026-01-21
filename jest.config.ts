@@ -14,6 +14,9 @@ const config: Config = {
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   moduleNameMapper: {
     "^\\./_generated/server$": "<rootDir>/__mocks__/convex/server.ts",
+    "^@/convex/_generated/(.*)$": "<rootDir>/__mocks__/convex/_generated/$1.ts",
+    "^(\\.\\./)*convex/_generated/(.*)$":
+      "<rootDir>/__mocks__/convex/_generated/$2.ts",
   },
 };
 
