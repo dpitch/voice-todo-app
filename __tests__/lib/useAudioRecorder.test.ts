@@ -1,4 +1,18 @@
 import { renderHook, act } from "@testing-library/react";
+
+// Mock useMicrophonePermission hook - must be before importing useAudioRecorder
+const mockCheckPermission = jest.fn();
+const mockRequestPermission = jest.fn();
+let mockPermissionState = "prompt";
+
+jest.mock("../../lib/useMicrophonePermission", () => ({
+  useMicrophonePermission: () => ({
+    permissionState: mockPermissionState,
+    checkPermission: mockCheckPermission,
+    requestPermission: mockRequestPermission,
+  }),
+}));
+
 import { useAudioRecorder } from "@/lib/useAudioRecorder";
 
 // Mock MediaRecorder
@@ -45,10 +59,14 @@ beforeEach(() => {
   mockOnDataAvailable = null;
   mockOnStop = null;
   mockOnError = null;
+  mockPermissionState = "prompt";
 
   mockGetUserMedia.mockResolvedValue({
     getTracks: () => [{ stop: mockTrackStop }],
   });
+
+  mockCheckPermission.mockResolvedValue("granted");
+  mockRequestPermission.mockResolvedValue("granted");
 });
 
 describe("useAudioRecorder hook", () => {
@@ -81,6 +99,21 @@ describe("useAudioRecorder hook", () => {
     it("provides resetRecording function", () => {
       const { result } = renderHook(() => useAudioRecorder());
       expect(typeof result.current.resetRecording).toBe("function");
+    });
+
+    it("provides permissionState", () => {
+      const { result } = renderHook(() => useAudioRecorder());
+      expect(result.current.permissionState).toBe("prompt");
+    });
+
+    it("provides checkPermission function", () => {
+      const { result } = renderHook(() => useAudioRecorder());
+      expect(typeof result.current.checkPermission).toBe("function");
+    });
+
+    it("provides requestPermission function", () => {
+      const { result } = renderHook(() => useAudioRecorder());
+      expect(typeof result.current.requestPermission).toBe("function");
     });
   });
 
@@ -171,6 +204,65 @@ describe("useAudioRecorder hook", () => {
       });
 
       expect(result.current.error).toBe("Failed to start recording");
+    });
+
+    it("sets user-friendly error for NotAllowedError", async () => {
+      const error = new DOMException("Permission denied", "NotAllowedError");
+      mockGetUserMedia.mockRejectedValueOnce(error);
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBe(
+        "Microphone access denied. Please enable it in your device settings."
+      );
+      expect(result.current.state).toBe("idle");
+    });
+
+    it("sets user-friendly error for PermissionDeniedError", async () => {
+      const error = new DOMException(
+        "Permission denied",
+        "PermissionDeniedError"
+      );
+      mockGetUserMedia.mockRejectedValueOnce(error);
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBe(
+        "Microphone access denied. Please enable it in your device settings."
+      );
+      expect(result.current.state).toBe("idle");
+    });
+
+    it("sets user-friendly error for NotFoundError", async () => {
+      const error = new DOMException("No microphone", "NotFoundError");
+      mockGetUserMedia.mockRejectedValueOnce(error);
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBe("No microphone found on this device");
+      expect(result.current.state).toBe("idle");
+    });
+
+    it("sets user-friendly error for DevicesNotFoundError", async () => {
+      const error = new DOMException("No devices", "DevicesNotFoundError");
+      mockGetUserMedia.mockRejectedValueOnce(error);
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBe("No microphone found on this device");
+      expect(result.current.state).toBe("idle");
     });
 
     it("handles MediaRecorder error event", async () => {
@@ -328,6 +420,84 @@ describe("useAudioRecorder hook", () => {
       });
 
       expect(result.current.state).toBe("idle");
+    });
+  });
+
+  describe("permission integration", () => {
+    it("prevents recording when permission is unsupported", async () => {
+      mockPermissionState = "unsupported";
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBe(
+        "Microphone not supported on this device"
+      );
+      expect(result.current.state).toBe("idle");
+      expect(mockGetUserMedia).not.toHaveBeenCalled();
+    });
+
+    it("prevents recording when permission is denied", async () => {
+      mockPermissionState = "denied";
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBe(
+        "Microphone access denied. Please enable it in your device settings."
+      );
+      expect(result.current.state).toBe("idle");
+      expect(mockGetUserMedia).not.toHaveBeenCalled();
+    });
+
+    it("allows recording when permission is granted", async () => {
+      mockPermissionState = "granted";
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBeNull();
+      expect(result.current.state).toBe("recording");
+      expect(mockGetUserMedia).toHaveBeenCalled();
+    });
+
+    it("allows recording when permission is prompt (will trigger browser prompt)", async () => {
+      mockPermissionState = "prompt";
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.startRecording();
+      });
+
+      expect(result.current.error).toBeNull();
+      expect(result.current.state).toBe("recording");
+      expect(mockGetUserMedia).toHaveBeenCalled();
+    });
+
+    it("exposes checkPermission from useMicrophonePermission", async () => {
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.checkPermission();
+      });
+
+      expect(mockCheckPermission).toHaveBeenCalled();
+    });
+
+    it("exposes requestPermission from useMicrophonePermission", async () => {
+      const { result } = renderHook(() => useAudioRecorder());
+
+      await act(async () => {
+        await result.current.requestPermission();
+      });
+
+      expect(mockRequestPermission).toHaveBeenCalled();
     });
   });
 });
