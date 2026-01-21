@@ -40,3 +40,25 @@ export const create = mutation({
     return todoId;
   },
 });
+
+export const toggleComplete = mutation({
+  args: {
+    id: v.id("todos"),
+  },
+  handler: async (ctx, args) => {
+    const todo = await ctx.db.get(args.id);
+    if (!todo) {
+      throw new Error("Todo not found");
+    }
+
+    const isCompleted = !todo.isCompleted;
+    const completedAt = isCompleted ? Date.now() : undefined;
+
+    await ctx.db.patch(args.id, {
+      isCompleted,
+      completedAt,
+    });
+
+    return { ...todo, isCompleted, completedAt };
+  },
+});

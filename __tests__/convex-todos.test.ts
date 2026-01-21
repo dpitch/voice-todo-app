@@ -1,4 +1,4 @@
-import { create, list, listByCategory } from "../convex/todos";
+import { create, list, listByCategory, toggleComplete } from "../convex/todos";
 
 describe("Convex Todos Query", () => {
   describe("list query", () => {
@@ -75,6 +75,25 @@ describe("Convex Todos Query", () => {
     it("should have a handler function", () => {
       expect(create.handler).toBeDefined();
       expect(typeof create.handler).toBe("function");
+    });
+  });
+
+  describe("toggleComplete mutation", () => {
+    it("should be defined", () => {
+      expect(toggleComplete).toBeDefined();
+    });
+
+    it("should be a mutation function", () => {
+      expect(toggleComplete).toHaveProperty("isMutation", true);
+    });
+
+    it("should require id argument", () => {
+      expect(toggleComplete.args).toHaveProperty("id");
+    });
+
+    it("should have a handler function", () => {
+      expect(toggleComplete.handler).toBeDefined();
+      expect(typeof toggleComplete.handler).toBe("function");
     });
   });
 });
