@@ -9,15 +9,41 @@ jest.mock("convex/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
 }));
 
+jest.mock("@dnd-kit/core", () => ({
+  DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSensor: jest.fn(),
+  useSensors: jest.fn(() => []),
+  PointerSensor: jest.fn(),
+  KeyboardSensor: jest.fn(),
+  useDroppable: jest.fn(() => ({ isOver: false, setNodeRef: jest.fn() })),
+}));
+
+jest.mock("@dnd-kit/sortable", () => ({
+  SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  sortableKeyboardCoordinates: jest.fn(),
+  verticalListSortingStrategy: jest.fn(),
+  useSortable: jest.fn(() => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: jest.fn(),
+    transform: null,
+    transition: null,
+    isDragging: false,
+  })),
+}));
+
 describe("Home page", () => {
   const mockCreateTodo = jest.fn();
   const mockToggleComplete = jest.fn();
+  const mockUpdateCategory = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseMutation.mockImplementation((mutationName: string) => {
       if (mutationName === "todos.create") return mockCreateTodo;
       if (mutationName === "todos.toggleComplete") return mockToggleComplete;
+      if (mutationName === "todos.updateCategory") return mockUpdateCategory;
       return jest.fn();
     });
   });

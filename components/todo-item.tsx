@@ -40,7 +40,13 @@ function TodoItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id })
+  } = useSortable({
+    id,
+    data: {
+      type: "todo",
+      todoId: id,
+    },
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),

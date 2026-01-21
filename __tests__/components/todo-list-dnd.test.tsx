@@ -4,6 +4,7 @@ import {
   CategorySection,
   type Todo,
 } from "@/components/todo-list"
+import { DndContext } from "@dnd-kit/core"
 
 const createTodo = (
   overrides: Partial<Todo> & { id: string; category: string }
@@ -14,6 +15,10 @@ const createTodo = (
   ...overrides,
 })
 
+const renderWithDndContext = (ui: React.ReactElement) => {
+  return render(<DndContext>{ui}</DndContext>)
+}
+
 describe("TodoList drag and drop configuration", () => {
   const sampleTodos: Todo[] = [
     createTodo({ id: "1", content: "Task 1", category: "Work", priority: "high" }),
@@ -23,25 +28,25 @@ describe("TodoList drag and drop configuration", () => {
 
   describe("DndContext and SortableContext integration", () => {
     it("renders todos with drag handles", () => {
-      render(<TodoList todos={sampleTodos} />)
+      renderWithDndContext(<TodoList todos={sampleTodos} />)
       const dragHandles = document.querySelectorAll("[data-slot='drag-handle']")
       expect(dragHandles).toHaveLength(3)
     })
 
     it("drag handles have correct accessible label", () => {
-      render(<TodoList todos={sampleTodos} />)
+      renderWithDndContext(<TodoList todos={sampleTodos} />)
       const dragHandles = screen.getAllByRole("button", { name: /drag to reorder/i })
       expect(dragHandles).toHaveLength(3)
     })
 
     it("renders todos within sortable context", () => {
-      render(<TodoList todos={sampleTodos} />)
+      renderWithDndContext(<TodoList todos={sampleTodos} />)
       const todoItems = document.querySelectorAll("[data-slot='todo-item']")
       expect(todoItems).toHaveLength(3)
     })
 
     it("todo items have data-dragging attribute", () => {
-      render(<TodoList todos={sampleTodos} />)
+      renderWithDndContext(<TodoList todos={sampleTodos} />)
       const todoItems = document.querySelectorAll("[data-slot='todo-item']")
       todoItems.forEach((item) => {
         expect(item).toHaveAttribute("data-dragging", "false")
@@ -51,34 +56,25 @@ describe("TodoList drag and drop configuration", () => {
 
   describe("CategorySection with drag and drop", () => {
     it("renders drag handles for each todo in category", () => {
-      render(<CategorySection category="Work" todos={sampleTodos} />)
+      renderWithDndContext(<CategorySection category="Work" todos={sampleTodos} />)
       const dragHandles = document.querySelectorAll("[data-slot='drag-handle']")
       expect(dragHandles).toHaveLength(3)
     })
 
-    it("accepts onReorder callback prop", () => {
-      const handleReorder = jest.fn()
-      render(
-        <CategorySection
-          category="Work"
-          todos={sampleTodos}
-          onReorder={handleReorder}
-        />
-      )
+    it("renders todos in a sortable list", () => {
+      renderWithDndContext(<CategorySection category="Work" todos={sampleTodos} />)
       expect(document.querySelector("[data-slot='category-section']")).toBeInTheDocument()
     })
   })
 
-  describe("TodoList with onReorder prop", () => {
-    it("accepts onReorder callback prop", () => {
-      const handleReorder = jest.fn()
-      render(<TodoList todos={sampleTodos} onReorder={handleReorder} />)
+  describe("TodoList renders sortable todo items", () => {
+    it("renders todo list with sortable items", () => {
+      renderWithDndContext(<TodoList todos={sampleTodos} />)
       expect(document.querySelector("[data-slot='todo-list']")).toBeInTheDocument()
     })
 
-    it("passes onReorder to CategorySection components", () => {
-      const handleReorder = jest.fn()
-      render(<TodoList todos={sampleTodos} onReorder={handleReorder} />)
+    it("renders all drag handles for todos", () => {
+      renderWithDndContext(<TodoList todos={sampleTodos} />)
       const dragHandles = document.querySelectorAll("[data-slot='drag-handle']")
       expect(dragHandles).toHaveLength(3)
     })
