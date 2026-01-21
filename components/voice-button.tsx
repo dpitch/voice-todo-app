@@ -65,7 +65,7 @@ export function VoiceButton({
       disabled={isDisabled}
       aria-label={getAriaLabel()}
       className={cn(
-        state === "recording" && "animate-pulse",
+        state === "recording" && "animate-recording-pulse",
         className
       )}
     >

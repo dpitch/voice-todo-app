@@ -80,10 +80,10 @@ describe("VoiceButton component", () => {
       expect(button).toBeInTheDocument();
     });
 
-    it("has animate-pulse class in recording state", () => {
+    it("has animate-recording-pulse class in recording state", () => {
       render(<VoiceButton state="recording" />);
       const button = document.querySelector('[data-slot="voice-button"]');
-      expect(button).toHaveClass("animate-pulse");
+      expect(button).toHaveClass("animate-recording-pulse");
     });
 
     it("is not disabled in recording state", () => {
