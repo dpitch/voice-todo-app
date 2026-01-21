@@ -9,6 +9,7 @@ import { TodoList, type Todo } from "@/components/todo-list";
 import { CompletedSection } from "@/components/completed-section";
 import { InputBar } from "@/components/input-bar";
 import { CategoryFilters } from "@/components/category-filters";
+import { useAudioRecorder } from "@/lib/useAudioRecorder";
 import {
   DndContext,
   DragOverlay,
@@ -25,6 +26,7 @@ export default function Home() {
   const [inputValue, setInputValue] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const { state: voiceState, startRecording, stopRecording } = useAudioRecorder();
 
   const todosData = useQuery(api.todos.list);
   const createTodo = useMutation(api.todos.create);
@@ -140,6 +142,9 @@ export default function Home() {
           value={inputValue}
           onChange={setInputValue}
           onSubmit={handleSubmit}
+          voiceState={voiceState}
+          onRecord={startRecording}
+          onStopRecording={stopRecording}
         />
       </div>
       <DragOverlay>

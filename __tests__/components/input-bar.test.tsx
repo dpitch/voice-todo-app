@@ -20,23 +20,23 @@ describe("InputBar component", () => {
     expect(container).toHaveClass("fixed", "bottom-0", "left-0", "right-0");
   });
 
-  it("renders the mic button", () => {
+  it("renders the voice button", () => {
     render(<InputBar />);
-    const micButton = screen.getByRole("button", { name: /voice input/i });
-    expect(micButton).toBeInTheDocument();
+    const voiceButton = screen.getByRole("button", { name: /start recording/i });
+    expect(voiceButton).toBeInTheDocument();
   });
 
-  it("mic button has ghost variant and icon size", () => {
-    render(<InputBar />);
-    const micButton = screen.getByRole("button", { name: /voice input/i });
-    expect(micButton).toHaveAttribute("data-variant", "ghost");
-    expect(micButton).toHaveAttribute("data-size", "icon");
+  it("voice button has ghost variant and icon size in idle state", () => {
+    render(<InputBar voiceState="idle" />);
+    const voiceButton = document.querySelector('[data-slot="voice-button"]');
+    expect(voiceButton).toHaveAttribute("data-variant", "ghost");
+    expect(voiceButton).toHaveAttribute("data-size", "icon");
   });
 
   it("contains the Mic icon", () => {
     render(<InputBar />);
-    const micButton = screen.getByRole("button", { name: /voice input/i });
-    const svgIcon = micButton.querySelector("svg");
+    const voiceButton = screen.getByRole("button", { name: /start recording/i });
+    const svgIcon = voiceButton.querySelector("svg");
     expect(svgIcon).toBeInTheDocument();
   });
 
@@ -92,12 +92,32 @@ describe("InputBar component", () => {
     expect(handleSubmit).toHaveBeenCalledWith("My task");
   });
 
-  it("calls onMicClick when mic button is clicked", () => {
-    const handleMicClick = jest.fn();
-    render(<InputBar onMicClick={handleMicClick} />);
-    const micButton = screen.getByRole("button", { name: /voice input/i });
-    fireEvent.click(micButton);
-    expect(handleMicClick).toHaveBeenCalled();
+  it("calls onRecord when voice button is clicked in idle state", () => {
+    const handleRecord = jest.fn();
+    render(<InputBar voiceState="idle" onRecord={handleRecord} />);
+    const voiceButton = screen.getByRole("button", { name: /start recording/i });
+    fireEvent.click(voiceButton);
+    expect(handleRecord).toHaveBeenCalled();
+  });
+
+  it("calls onStopRecording when voice button is clicked in recording state", () => {
+    const handleStopRecording = jest.fn();
+    render(<InputBar voiceState="recording" onStopRecording={handleStopRecording} />);
+    const voiceButton = screen.getByRole("button", { name: /stop recording/i });
+    fireEvent.click(voiceButton);
+    expect(handleStopRecording).toHaveBeenCalled();
+  });
+
+  it("shows recording state on voice button", () => {
+    render(<InputBar voiceState="recording" />);
+    const voiceButton = document.querySelector('[data-slot="voice-button"]');
+    expect(voiceButton).toHaveAttribute("data-state", "recording");
+  });
+
+  it("shows processing state on voice button", () => {
+    render(<InputBar voiceState="processing" />);
+    const voiceButton = document.querySelector('[data-slot="voice-button"]');
+    expect(voiceButton).toHaveAttribute("data-state", "processing");
   });
 
   it("accepts custom className", () => {

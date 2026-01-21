@@ -1,15 +1,16 @@
 "use client";
 
-import { Mic } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VoiceButton, type VoiceButtonState } from "@/components/voice-button";
 import { cn } from "@/lib/utils";
 
 interface InputBarProps {
   value?: string;
   onChange?: (value: string) => void;
   onSubmit?: (value: string) => void;
-  onMicClick?: () => void;
+  onRecord?: () => void;
+  onStopRecording?: () => void;
+  voiceState?: VoiceButtonState;
   placeholder?: string;
   className?: string;
 }
@@ -18,7 +19,9 @@ export function InputBar({
   value = "",
   onChange,
   onSubmit,
-  onMicClick,
+  onRecord,
+  onStopRecording,
+  voiceState = "idle",
   placeholder = "Add a new task...",
   className,
 }: InputBarProps) {
@@ -46,14 +49,11 @@ export function InputBar({
           className="flex-1"
           aria-label="Task input"
         />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMicClick}
-          aria-label="Voice input"
-        >
-          <Mic className="size-5" />
-        </Button>
+        <VoiceButton
+          state={voiceState}
+          onRecord={onRecord}
+          onStop={onStopRecording}
+        />
       </div>
     </div>
   );
