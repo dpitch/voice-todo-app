@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/header";
@@ -26,12 +26,58 @@ export default function Home() {
   const [inputValue, setInputValue] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const { state: voiceState, startRecording, stopRecording } = useAudioRecorder();
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const {
+    state: recorderState,
+    audioBlob,
+    startRecording,
+    stopRecording,
+    resetRecording,
+  } = useAudioRecorder();
 
   const todosData = useQuery(api.todos.list);
   const createTodo = useMutation(api.todos.create);
   const toggleComplete = useMutation(api.todos.toggleComplete);
   const updateCategory = useMutation(api.todos.updateCategory);
+  const processVoiceTodo = useAction(api.ai.processVoiceTodo);
+
+  const voiceState = isProcessingVoice ? "processing" : recorderState;
+
+  const processAudioBlob = useCallback(
+    async (blob: Blob) => {
+      setIsProcessingVoice(true);
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const base64Data = result.split(",")[1];
+            if (base64Data) {
+              resolve(base64Data);
+            } else {
+              reject(new Error("Failed to convert audio to base64"));
+            }
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+
+        await processVoiceTodo({ audioData: base64 });
+      } catch (error) {
+        console.error("Voice processing failed:", error);
+      } finally {
+        setIsProcessingVoice(false);
+        resetRecording();
+      }
+    },
+    [processVoiceTodo, resetRecording]
+  );
+
+  useEffect(() => {
+    if (audioBlob && recorderState === "idle" && !isProcessingVoice) {
+      processAudioBlob(audioBlob);
+    }
+  }, [audioBlob, recorderState, isProcessingVoice, processAudioBlob]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

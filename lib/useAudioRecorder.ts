@@ -50,11 +50,9 @@ export function useAudioRecorder(): AudioRecorderResult {
       };
 
       mediaRecorder.onstop = () => {
-        setState("processing");
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
         stopMediaTracks();
-        setState("idle");
       };
 
       mediaRecorder.onerror = () => {

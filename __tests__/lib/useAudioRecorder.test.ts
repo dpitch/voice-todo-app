@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useAudioRecorder } from "@/lib/useAudioRecorder";
 
 // Mock MediaRecorder
@@ -251,7 +251,7 @@ describe("useAudioRecorder hook", () => {
       expect(mockTrackStop).toHaveBeenCalled();
     });
 
-    it("returns to idle state after processing", async () => {
+    it("stays in recording state until caller resets it", async () => {
       const { result } = renderHook(() => useAudioRecorder());
 
       await act(async () => {
@@ -262,9 +262,17 @@ describe("useAudioRecorder hook", () => {
         mockOnStop?.();
       });
 
-      await waitFor(() => {
-        expect(result.current.state).toBe("idle");
+      // State stays at recording until resetRecording is called
+      // This allows the caller to process the audioBlob before resetting
+      expect(result.current.state).toBe("recording");
+      expect(result.current.audioBlob).not.toBeNull();
+
+      act(() => {
+        result.current.resetRecording();
       });
+
+      expect(result.current.state).toBe("idle");
+      expect(result.current.audioBlob).toBeNull();
     });
   });
 

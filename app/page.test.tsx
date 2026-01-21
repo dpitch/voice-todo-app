@@ -3,10 +3,39 @@ import Home from "./page";
 
 const mockUseQuery = jest.fn();
 const mockUseMutation = jest.fn();
+const mockUseAction = jest.fn();
 
 jest.mock("convex/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useAction: (...args: unknown[]) => mockUseAction(...args),
+}));
+
+// Mock state for useAudioRecorder
+const mockAudioRecorderState = {
+  recorderState: "idle" as "idle" | "recording" | "processing",
+  audioBlob: null as Blob | null,
+  error: null as string | null,
+};
+const mockStartRecording = jest.fn();
+const mockStopRecording = jest.fn();
+const mockResetRecording = jest.fn();
+
+jest.mock("../lib/useAudioRecorder", () => ({
+  useAudioRecorder: () => ({
+    get state() {
+      return mockAudioRecorderState.recorderState;
+    },
+    get audioBlob() {
+      return mockAudioRecorderState.audioBlob;
+    },
+    get error() {
+      return mockAudioRecorderState.error;
+    },
+    startRecording: mockStartRecording,
+    stopRecording: mockStopRecording,
+    resetRecording: mockResetRecording,
+  }),
 }));
 
 // Store the captured onDragEnd handler from DndContext
@@ -43,15 +72,21 @@ describe("Home page", () => {
   const mockCreateTodo = jest.fn();
   const mockToggleComplete = jest.fn();
   const mockUpdateCategory = jest.fn();
+  const mockProcessVoiceTodo = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset audio recorder mock state
+    mockAudioRecorderState.recorderState = "idle";
+    mockAudioRecorderState.audioBlob = null;
+    mockAudioRecorderState.error = null;
     mockUseMutation.mockImplementation((mutationName: string) => {
       if (mutationName === "todos.create") return mockCreateTodo;
       if (mutationName === "todos.toggleComplete") return mockToggleComplete;
       if (mutationName === "todos.updateCategory") return mockUpdateCategory;
       return jest.fn();
     });
+    mockUseAction.mockReturnValue(mockProcessVoiceTodo);
   });
 
   it("shows loading state when data is undefined", () => {
@@ -490,6 +525,136 @@ describe("Home page", () => {
       await waitFor(() => {
         expect(mockUpdateCategory).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("voice recording integration", () => {
+    it("renders voice button", () => {
+      mockUseQuery.mockReturnValue([]);
+
+      render(<Home />);
+
+      const voiceButton = screen.getByRole("button", { name: /record/i });
+      expect(voiceButton).toBeInTheDocument();
+    });
+
+    it("calls startRecording when voice button is clicked in idle state", () => {
+      mockUseQuery.mockReturnValue([]);
+      mockAudioRecorderState.recorderState = "idle";
+
+      render(<Home />);
+
+      const voiceButton = screen.getByRole("button", { name: /record/i });
+      fireEvent.click(voiceButton);
+
+      expect(mockStartRecording).toHaveBeenCalled();
+    });
+
+    it("calls stopRecording when voice button is clicked in recording state", () => {
+      mockUseQuery.mockReturnValue([]);
+      mockAudioRecorderState.recorderState = "recording";
+
+      render(<Home />);
+
+      const voiceButton = screen.getByRole("button", { name: /stop/i });
+      fireEvent.click(voiceButton);
+
+      expect(mockStopRecording).toHaveBeenCalled();
+    });
+
+    it("processes audio blob when recording stops and calls processVoiceTodo", async () => {
+      mockUseQuery.mockReturnValue([]);
+      mockProcessVoiceTodo.mockResolvedValue({
+        todoId: "123",
+        content: "Test todo",
+        category: "Test",
+        priority: "medium",
+      });
+
+      // Create a mock blob
+      const testBlob = new Blob(["test audio data"], { type: "audio/webm" });
+      mockAudioRecorderState.audioBlob = testBlob;
+      mockAudioRecorderState.recorderState = "idle";
+
+      render(<Home />);
+
+      await waitFor(() => {
+        expect(mockProcessVoiceTodo).toHaveBeenCalled();
+      });
+
+      // Verify the audio data was passed
+      const callArgs = mockProcessVoiceTodo.mock.calls[0][0];
+      expect(callArgs).toHaveProperty("audioData");
+      expect(typeof callArgs.audioData).toBe("string");
+    });
+
+    it("resets recording after processing completes", async () => {
+      mockUseQuery.mockReturnValue([]);
+      mockProcessVoiceTodo.mockResolvedValue({
+        todoId: "123",
+        content: "Test todo",
+        category: "Test",
+        priority: "medium",
+      });
+
+      const testBlob = new Blob(["test audio data"], { type: "audio/webm" });
+      mockAudioRecorderState.audioBlob = testBlob;
+      mockAudioRecorderState.recorderState = "idle";
+
+      render(<Home />);
+
+      await waitFor(() => {
+        expect(mockResetRecording).toHaveBeenCalled();
+      });
+    });
+
+    it("handles voice processing error gracefully", async () => {
+      mockUseQuery.mockReturnValue([]);
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockProcessVoiceTodo.mockRejectedValue(new Error("API error"));
+
+      const testBlob = new Blob(["test audio data"], { type: "audio/webm" });
+      mockAudioRecorderState.audioBlob = testBlob;
+      mockAudioRecorderState.recorderState = "idle";
+
+      render(<Home />);
+
+      await waitFor(() => {
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          "Voice processing failed:",
+          expect.any(Error)
+        );
+      });
+
+      // Should still reset recording after error
+      await waitFor(() => {
+        expect(mockResetRecording).toHaveBeenCalled();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("does not process when audioBlob is null", () => {
+      mockUseQuery.mockReturnValue([]);
+      mockAudioRecorderState.audioBlob = null;
+      mockAudioRecorderState.recorderState = "idle";
+
+      render(<Home />);
+
+      expect(mockProcessVoiceTodo).not.toHaveBeenCalled();
+    });
+
+    it("does not process when still recording", () => {
+      mockUseQuery.mockReturnValue([]);
+      const testBlob = new Blob(["test audio data"], { type: "audio/webm" });
+      mockAudioRecorderState.audioBlob = testBlob;
+      mockAudioRecorderState.recorderState = "recording";
+
+      render(<Home />);
+
+      expect(mockProcessVoiceTodo).not.toHaveBeenCalled();
     });
   });
 });
