@@ -27,6 +27,7 @@ export default function Home() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [categoryChangedTodoId, setCategoryChangedTodoId] = useState<string | null>(null);
   const {
     state: recorderState,
     audioBlob,
@@ -142,9 +143,21 @@ export default function Home() {
           id: todoId as Id<"todos">,
           category: targetCategory,
         });
+        // Trigger category change animation
+        setCategoryChangedTodoId(todoId);
       }
     }
   };
+
+  // Clear category change animation after it completes
+  useEffect(() => {
+    if (categoryChangedTodoId) {
+      const timer = setTimeout(() => {
+        setCategoryChangedTodoId(null);
+      }, 500); // Animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [categoryChangedTodoId]);
 
   const activeDragTodo = activeDragId
     ? todos.find((t) => t.id === activeDragId)
@@ -178,6 +191,7 @@ export default function Home() {
           <TodoList
             todos={filteredTodos}
             onToggleComplete={handleToggleComplete}
+            categoryChangedTodoId={categoryChangedTodoId}
           />
           <CompletedSection
             todos={todos}

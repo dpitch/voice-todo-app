@@ -181,6 +181,44 @@ describe("CategorySection component", () => {
   })
 })
 
+describe("categoryChangedTodoId prop", () => {
+  const categoryTodos: Todo[] = [
+    createTodo({ id: "1", content: "Task 1", category: "Work", isCompleted: false }),
+    createTodo({ id: "2", content: "Task 2", category: "Work", isCompleted: false }),
+  ]
+
+  it("passes isCategoryChanged to the matching todo item", () => {
+    render(<CategorySection category="Work" todos={categoryTodos} categoryChangedTodoId="1" />)
+    const todoItem = document.querySelector("[data-slot='todo-item'][data-category-changed='true']")
+    expect(todoItem).toBeInTheDocument()
+  })
+
+  it("does not set isCategoryChanged on non-matching todo items", () => {
+    render(<CategorySection category="Work" todos={categoryTodos} categoryChangedTodoId="1" />)
+    const todoItems = document.querySelectorAll("[data-slot='todo-item']")
+    const unchangedItem = Array.from(todoItems).find(
+      item => item.getAttribute("data-category-changed") === "false"
+    )
+    expect(unchangedItem).toBeInTheDocument()
+  })
+
+  it("TodoList passes categoryChangedTodoId to CategorySection", () => {
+    const sampleTodos: Todo[] = [
+      createTodo({ id: "1", content: "Task 1", category: "Work" }),
+      createTodo({ id: "2", content: "Task 2", category: "Home" }),
+    ]
+    render(<TodoList todos={sampleTodos} categoryChangedTodoId="1" />)
+    const todoItem = document.querySelector("[data-slot='todo-item'][data-category-changed='true']")
+    expect(todoItem).toBeInTheDocument()
+  })
+
+  it("no todo items have isCategoryChanged when categoryChangedTodoId is null", () => {
+    render(<CategorySection category="Work" todos={categoryTodos} categoryChangedTodoId={null} />)
+    const changedItems = document.querySelectorAll("[data-slot='todo-item'][data-category-changed='true']")
+    expect(changedItems).toHaveLength(0)
+  })
+})
+
 describe("groupTodosByCategory", () => {
   it("groups todos by category", () => {
     const todos: Todo[] = [

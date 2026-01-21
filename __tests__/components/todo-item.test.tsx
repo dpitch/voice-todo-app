@@ -178,4 +178,36 @@ describe("TodoItem component", () => {
       expect(card).toHaveAttribute("data-dragging", "false");
     });
   });
+
+  describe("category change animation", () => {
+    it("has data-category-changed attribute set to false by default", () => {
+      render(<TodoItem {...defaultProps} />);
+      const card = document.querySelector("[data-slot='todo-item']");
+      expect(card).toHaveAttribute("data-category-changed", "false");
+    });
+
+    it("has data-category-changed attribute set to true when isCategoryChanged is true", () => {
+      render(<TodoItem {...defaultProps} isCategoryChanged={true} />);
+      const card = document.querySelector("[data-slot='todo-item']");
+      expect(card).toHaveAttribute("data-category-changed", "true");
+    });
+
+    it("applies animate-category-change class when isCategoryChanged is true", () => {
+      render(<TodoItem {...defaultProps} isCategoryChanged={true} />);
+      const card = document.querySelector("[data-slot='todo-item']");
+      expect(card).toHaveClass("animate-category-change");
+    });
+
+    it("does not apply animate-category-change class when isCategoryChanged is false", () => {
+      render(<TodoItem {...defaultProps} isCategoryChanged={false} />);
+      const card = document.querySelector("[data-slot='todo-item']");
+      expect(card).not.toHaveClass("animate-category-change");
+    });
+
+    it("does not apply animate-category-change class when isCategoryChanged is undefined", () => {
+      render(<TodoItem {...defaultProps} />);
+      const card = document.querySelector("[data-slot='todo-item']");
+      expect(card).not.toHaveClass("animate-category-change");
+    });
+  });
 });

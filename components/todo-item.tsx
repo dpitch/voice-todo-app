@@ -15,6 +15,7 @@ export interface TodoItemProps {
   content: string
   priority: Priority
   isCompleted: boolean
+  isCategoryChanged?: boolean
   onToggleComplete?: (checked: boolean) => void
   className?: string
 }
@@ -30,6 +31,7 @@ function TodoItem({
   content,
   priority,
   isCompleted,
+  isCategoryChanged,
   onToggleComplete,
   className,
 }: TodoItemProps) {
@@ -61,10 +63,12 @@ function TodoItem({
       data-priority={priority}
       data-completed={isCompleted}
       data-dragging={isDragging}
+      data-category-changed={isCategoryChanged ?? false}
       className={cn(
         "flex flex-row items-center gap-3 py-3 px-4",
         isCompleted && "opacity-60",
         isDragging && "opacity-50 shadow-lg",
+        isCategoryChanged && "animate-category-change",
         className
       )}
     >

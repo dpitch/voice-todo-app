@@ -88,4 +88,52 @@ describe("Card CSS transitions", () => {
       expect(globalsCss).toMatch(/\.animate-card-slide-in[\s\S]*?forwards/);
     });
   });
+
+  describe("category change animation", () => {
+    it("defines category-change keyframe animation", () => {
+      expect(globalsCss).toContain("@keyframes category-change");
+    });
+
+    it("category-change animation includes opacity transform", () => {
+      expect(globalsCss).toMatch(
+        /category-change[\s\S]*?0%[\s\S]*?opacity:\s*0/
+      );
+      expect(globalsCss).toMatch(
+        /category-change[\s\S]*?100%[\s\S]*?opacity:\s*1/
+      );
+    });
+
+    it("category-change animation includes translateX transform", () => {
+      expect(globalsCss).toMatch(
+        /category-change[\s\S]*?transform:\s*translateX/
+      );
+    });
+
+    it("category-change animation includes scale transform", () => {
+      expect(globalsCss).toMatch(
+        /category-change[\s\S]*?scale/
+      );
+    });
+
+    it("category-change animation includes box-shadow glow effect", () => {
+      expect(globalsCss).toMatch(
+        /category-change[\s\S]*?box-shadow/
+      );
+    });
+
+    it("defines animate-category-change utility class", () => {
+      expect(globalsCss).toContain(".animate-category-change");
+      expect(globalsCss).toMatch(
+        /\.animate-category-change[\s\S]*?animation:[\s\S]*?category-change/
+      );
+    });
+
+    it("animate-category-change uses ease-out timing function", () => {
+      expect(globalsCss).toMatch(/\.animate-category-change[\s\S]*?ease-out/);
+    });
+
+    it("animate-category-change uses forwards fill mode", () => {
+      expect(globalsCss).toMatch(/\.animate-category-change[\s\S]*?forwards/);
+    });
+  });
 });

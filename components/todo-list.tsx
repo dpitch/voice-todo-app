@@ -26,6 +26,7 @@ export interface TodoListProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
   className?: string
+  categoryChangedTodoId?: string | null
 }
 
 function groupTodosByCategory(todos: Todo[]): Map<string, Todo[]> {
@@ -42,6 +43,7 @@ interface CategorySectionProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
   defaultOpen?: boolean
+  categoryChangedTodoId?: string | null
 }
 
 function CategorySection({
@@ -49,6 +51,7 @@ function CategorySection({
   todos,
   onToggleComplete,
   defaultOpen = true,
+  categoryChangedTodoId,
 }: CategorySectionProps) {
   const completedCount = todos.filter((t) => t.isCompleted).length
   const totalCount = todos.length
@@ -96,6 +99,7 @@ function CategorySection({
                   content={todo.content}
                   priority={todo.priority}
                   isCompleted={todo.isCompleted}
+                  isCategoryChanged={todo.id === categoryChangedTodoId}
                   onToggleComplete={
                     onToggleComplete
                       ? (checked) => onToggleComplete(todo.id, checked)
@@ -111,7 +115,7 @@ function CategorySection({
   )
 }
 
-function TodoList({ todos, onToggleComplete, className }: TodoListProps) {
+function TodoList({ todos, onToggleComplete, className, categoryChangedTodoId }: TodoListProps) {
   const groupedTodos = groupTodosByCategory(todos)
   const categories = Array.from(groupedTodos.keys()).sort()
 
@@ -137,6 +141,7 @@ function TodoList({ todos, onToggleComplete, className }: TodoListProps) {
           category={category}
           todos={groupedTodos.get(category)!}
           onToggleComplete={onToggleComplete}
+          categoryChangedTodoId={categoryChangedTodoId}
         />
       ))}
     </div>

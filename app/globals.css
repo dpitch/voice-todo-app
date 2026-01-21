@@ -197,3 +197,28 @@
 [data-slot="todo-item"] {
   animation: card-slide-in 0.3s ease-out forwards;
 }
+
+/* Category change animation - highlights item sliding into new category */
+@keyframes category-change {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.95);
+    box-shadow: 0 0 0 0 var(--primary);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary) 30%, transparent);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.animate-category-change {
+  animation: category-change 0.5s ease-out forwards;
+}
