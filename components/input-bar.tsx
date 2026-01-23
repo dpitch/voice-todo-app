@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { VoiceButton, type VoiceButtonState } from "@/components/voice-button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ interface InputBarProps {
   onRecord?: () => void;
   onStopRecording?: () => void;
   onImagesPaste?: (files: File[]) => void;
+  onRemoveImage?: (index: number) => void;
   pendingImages?: File[];
   voiceState?: VoiceButtonState;
   isProcessingText?: boolean;
@@ -27,6 +28,7 @@ export function InputBar({
   onRecord,
   onStopRecording,
   onImagesPaste,
+  onRemoveImage,
   pendingImages = [],
   voiceState = "idle",
   isProcessingText = false,
@@ -115,13 +117,21 @@ export function InputBar({
             {imagePreviewUrls.map((url, index) => (
               <div
                 key={`${pendingImages[index].name}-${index}`}
-                className="relative h-12 w-12 overflow-hidden rounded-md border border-border"
+                className="group relative h-12 w-12 overflow-hidden rounded-md border border-border"
               >
                 <img
                   src={url}
                   alt={`Preview ${index + 1}`}
                   className="h-full w-full object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={() => onRemoveImage?.(index)}
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-label={`Remove image ${index + 1}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
             ))}
           </div>
