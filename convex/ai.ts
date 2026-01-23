@@ -1,6 +1,13 @@
-import { action } from "./_generated/server";
+import { action, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
 
 export const transcribeAudio = action({
   args: {
@@ -46,18 +53,38 @@ export const transcribeAudio = action({
   },
 });
 
-const CLASSIFICATION_PROMPT = `Tu es un assistant qui classe des to-dos en français.
+function buildClassificationPrompt(content: string, existingCategories: string[]): string {
+  const categoriesListText = existingCategories.length > 0
+    ? `\n\nCatégories existantes dans l'app: ${existingCategories.map(c => `"${c}"`).join(", ")}\nUtilise une de ces catégories si elle correspond bien. Sinon, crée une nouvelle catégorie appropriée.`
+    : "";
+
+  return `Tu es un assistant qui classe des to-dos en français.
 Pour chaque to-do, détermine:
-1. category: un thème court (ex: "Travail", "Tech", "Perso", "À visiter", "Courses", "Admin"...)
+1. category: un thème court. Exemples typiques: "Travail", "Tech", "Perso", "À visiter", "Courses", "Admin", etc.
+   - IMPORTANT: Si le to-do mentionne un projet spécifique (nom d'app, nom de projet, etc.), utilise ce nom comme catégorie.
+   - Par exemple: "Ajouter une feature à RepNet" → category: "RepNet"
+   - Par exemple: "Corriger le bug dans MyApp" → category: "MyApp"
 2. priority: "high" (urgent/deadline proche), "medium" (normal), "low" (quand j'ai le temps)
+3. cleanedContent: le texte du to-do NETTOYÉ en enlevant les mentions redondantes du projet/catégorie.
+   - Enlève les préfixes comme "Pour RepNet:", "RepNet:", "Dans MyApp:", etc.
+   - Enlève aussi les mentions redondantes à la fin comme "...pour RepNet", "...dans MyApp"
+   - Garde le texte naturel et lisible
+   - Exemples:
+     - "Pour RepNet: déplacer la page de choix" → "Déplacer la page de choix"
+     - "RepNet - ajouter un bouton" → "Ajouter un bouton"
+     - "Corriger le bug dans RepNet" → "Corriger le bug"
+     - "Acheter du pain" → "Acheter du pain" (pas de changement si pas de mention de catégorie)
+${categoriesListText}
 
-Réponds UNIQUEMENT en JSON: {"category": "...", "priority": "..."}
+Réponds UNIQUEMENT en JSON: {"category": "...", "priority": "...", "cleanedContent": "..."}
 
-To-do à classer: "{content}"`;
+To-do à classer: "${content}"`;
+}
 
 export const classifyTodo = action({
   args: {
     content: v.string(),
+    existingCategories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -65,7 +92,7 @@ export const classifyTodo = action({
       throw new Error("ANTHROPIC_API_KEY environment variable is not set");
     }
 
-    const prompt = CLASSIFICATION_PROMPT.replace("{content}", args.content);
+    const prompt = buildClassificationPrompt(args.content, args.existingCategories ?? []);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -110,6 +137,52 @@ export const classifyTodo = action({
     return {
       category: parsed.category as string,
       priority: parsed.priority as "low" | "medium" | "high",
+      cleanedContent: (parsed.cleanedContent as string) || args.content,
+    };
+  },
+});
+
+// Process a text todo (classify and create)
+export const processTextTodo = action({
+  args: {
+    content: v.string(),
+    existingCategories: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args): Promise<{
+    todoId: string;
+    content: string;
+    category: string;
+    priority: "low" | "medium" | "high";
+  }> => {
+    // Step 1: Classify the todo (category + priority + cleaned content)
+    const classification: { 
+      category: string; 
+      priority: "low" | "medium" | "high";
+      cleanedContent: string;
+    } = await ctx.runAction(api.ai.classifyTodo, {
+      content: args.content,
+      existingCategories: args.existingCategories,
+    });
+
+    // Step 2: Create the todo with cleaned content
+    const todoId: string = await ctx.runMutation(api.todos.create, {
+      content: classification.cleanedContent,
+      category: classification.category,
+      priority: classification.priority,
+      isCompleted: false,
+      createdAt: Date.now(),
+    });
+
+    // Step 3: Ensure the category exists in the categories table
+    await ctx.runMutation(api.todos.createCategory, {
+      name: classification.category,
+    });
+
+    return {
+      todoId,
+      content: classification.cleanedContent,
+      category: classification.category,
+      priority: classification.priority,
     };
   },
 });
@@ -117,10 +190,16 @@ export const classifyTodo = action({
 export const processVoiceTodo = action({
   args: {
     audioData: v.string(),
+    existingCategories: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    todoId: string;
+    content: string;
+    category: string;
+    priority: "low" | "medium" | "high";
+  }> => {
     // Step 1: Transcribe audio to text
-    const transcription = await ctx.runAction(api.ai.transcribeAudio, {
+    const transcription: { text: string } = await ctx.runAction(api.ai.transcribeAudio, {
       audioData: args.audioData,
     });
 
@@ -128,23 +207,33 @@ export const processVoiceTodo = action({
       throw new Error("Transcription resulted in empty text");
     }
 
-    // Step 2: Classify the todo (category + priority)
-    const classification = await ctx.runAction(api.ai.classifyTodo, {
+    // Step 2: Classify the todo (category + priority + cleaned content)
+    const classification: { 
+      category: string; 
+      priority: "low" | "medium" | "high";
+      cleanedContent: string;
+    } = await ctx.runAction(api.ai.classifyTodo, {
       content: transcription.text,
+      existingCategories: args.existingCategories,
     });
 
-    // Step 3: Create the todo
-    const todoId = await ctx.runMutation(api.todos.create, {
-      content: transcription.text,
+    // Step 3: Create the todo with cleaned content
+    const todoId: string = await ctx.runMutation(api.todos.create, {
+      content: classification.cleanedContent,
       category: classification.category,
       priority: classification.priority,
       isCompleted: false,
       createdAt: Date.now(),
     });
 
+    // Step 4: Ensure the category exists in the categories table
+    await ctx.runMutation(api.todos.createCategory, {
+      name: classification.category,
+    });
+
     return {
       todoId,
-      content: transcription.text,
+      content: classification.cleanedContent,
       category: classification.category,
       priority: classification.priority,
     };
