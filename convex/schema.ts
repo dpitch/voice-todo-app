@@ -9,9 +9,18 @@ export default defineSchema({
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   })
     .index("by_category", ["category"])
     .index("by_priority", ["priority"])
     .index("by_isCompleted", ["isCompleted"])
+    .index("by_createdAt", ["createdAt"]),
+
+  categories: defineTable({
+    name: v.string(),
+    color: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_name", ["name"])
     .index("by_createdAt", ["createdAt"]),
 });
