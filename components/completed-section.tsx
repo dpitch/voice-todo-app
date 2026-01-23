@@ -62,6 +62,7 @@ function CompletedSection({
           {completedTodos.map((todo) => (
             <li key={todo.id}>
               <TodoItem
+                id={todo.id}
                 content={todo.content}
                 priority={todo.priority}
                 isCompleted={todo.isCompleted}

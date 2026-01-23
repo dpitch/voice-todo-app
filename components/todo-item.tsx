@@ -17,6 +17,8 @@ export interface TodoItemProps {
   isCompleted: boolean
   isCategoryChanged?: boolean
   onToggleComplete?: (checked: boolean) => void
+  imageUrls?: string[]
+  onImageClick?: (index: number) => void
   className?: string
 }
 
@@ -33,6 +35,8 @@ function TodoItem({
   isCompleted,
   isCategoryChanged,
   onToggleComplete,
+  imageUrls,
+  onImageClick,
   className,
 }: TodoItemProps) {
   const {
@@ -99,6 +103,24 @@ function TodoItem({
       >
         {content}
       </span>
+      {imageUrls && imageUrls.length > 0 && (
+        <div data-slot="image-thumbnails" className="flex gap-1">
+          {imageUrls.map((url, index) => (
+            <button
+              key={`${url}-${index}`}
+              type="button"
+              onClick={() => onImageClick?.(index)}
+              className="size-8 shrink-0 overflow-hidden rounded border border-border hover:border-primary transition-colors"
+            >
+              <img
+                src={url}
+                alt={`Attached image ${index + 1}`}
+                className="size-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
       <Checkbox
         checked={isCompleted}
         onCheckedChange={onToggleComplete}
