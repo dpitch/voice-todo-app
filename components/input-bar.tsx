@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, X } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { VoiceButton, type VoiceButtonState } from "@/components/voice-button";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,9 @@ interface InputBarProps {
   pendingImages?: File[];
   voiceState?: VoiceButtonState;
   isProcessingText?: boolean;
+  imageError?: string | null;
+  onRetryImageUpload?: () => void;
+  onClearImageError?: () => void;
   placeholder?: string;
   className?: string;
 }
@@ -32,6 +35,9 @@ export function InputBar({
   pendingImages = [],
   voiceState = "idle",
   isProcessingText = false,
+  imageError = null,
+  onRetryImageUpload,
+  onClearImageError,
   placeholder = "Ajouter un todo...",
   className,
 }: InputBarProps) {
@@ -111,6 +117,30 @@ export function InputBar({
       onDrop={handleDrop}
     >
       <div className="mx-auto max-w-3xl">
+        {/* Image error display */}
+        {imageError && (
+          <div className="mb-2 flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="flex-1">{imageError}</span>
+            <button
+              type="button"
+              onClick={onRetryImageUpload}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium hover:bg-destructive/20"
+              aria-label="Réessayer"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Réessayer
+            </button>
+            <button
+              type="button"
+              onClick={onClearImageError}
+              className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-destructive/20"
+              aria-label="Fermer"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         {/* Pending images preview */}
         {pendingImages.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">

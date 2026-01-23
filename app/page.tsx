@@ -33,6 +33,9 @@ export default function Home() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const {
     state: recorderState,
     audioBlob,
@@ -81,11 +84,13 @@ export default function Home() {
   const updateCategory = useMutation(api.todos.updateCategory);
   const createCategory = useMutation(api.todos.createCategory);
   const deleteCategory = useMutation(api.todos.deleteCategory);
+  const generateUploadUrl = useMutation(api.ai.generateUploadUrl);
   const processVoiceTodo = useAction(api.ai.processVoiceTodo);
   const processTextTodo = useAction(api.ai.processTextTodo);
+  const processImageTodo = useAction(api.ai.processImageTodo);
 
   const voiceState = isProcessingVoice ? "processing" : recorderState;
-  const isProcessing = isProcessingVoice || isProcessingText;
+  const isProcessing = isProcessingVoice || isProcessingText || isUploadingImages;
 
   // Get all existing category names for AI classification
   const existingCategoryNames = [
@@ -187,7 +192,14 @@ export default function Home() {
 
   const handleSubmit = async (value: string) => {
     if (isProcessing) return;
-    
+
+    // If there are pending images, process them with optional text
+    if (pendingImages.length > 0) {
+      await handleImageSubmit(value || undefined);
+      return;
+    }
+
+    // Otherwise, process as regular text todo
     setIsProcessingText(true);
     try {
       await processTextTodo({
@@ -204,6 +216,69 @@ export default function Home() {
 
   const handleToggleComplete = async (id: string) => {
     await toggleComplete({ id: id as Id<"todos"> });
+  };
+
+  const handleImagesPaste = (files: File[]) => {
+    setImageError(null);
+    setPendingImages((prev) => [...prev, ...files]);
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setPendingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleImageSubmit = async (userText?: string) => {
+    if (isProcessing || pendingImages.length === 0) return;
+
+    setIsUploadingImages(true);
+    setImageError(null);
+
+    try {
+      // Step 1: Upload all images
+      const storageIds: Id<"_storage">[] = [];
+      for (const file of pendingImages) {
+        const uploadUrl = await generateUploadUrl();
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload échoué pour ${file.name}`);
+        }
+
+        const { storageId } = await uploadResponse.json();
+        storageIds.push(storageId as Id<"_storage">);
+      }
+
+      // Step 2: Process the image todo
+      await processImageTodo({
+        storageIds,
+        userText: userText?.trim() || undefined,
+        existingCategories: existingCategoryNames,
+      });
+
+      // Clear state on success
+      setPendingImages([]);
+      setInputValue("");
+    } catch (error) {
+      console.error("Image processing failed:", error);
+      setImageError(
+        error instanceof Error ? error.message : "Erreur lors du traitement de l'image"
+      );
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleRetryImageUpload = () => {
+    handleImageSubmit(inputValue || undefined);
+  };
+
+  const handleClearImageError = () => {
+    setImageError(null);
+    setPendingImages([]);
   };
 
   const handleImageClick = (todoId: string, imageIndex: number) => {
@@ -304,7 +379,13 @@ export default function Home() {
           voiceState={voiceState}
           onRecord={startRecording}
           onStopRecording={stopRecording}
-          isProcessingText={isProcessingText}
+          isProcessingText={isProcessingText || isUploadingImages}
+          onImagesPaste={handleImagesPaste}
+          onRemoveImage={handleRemoveImage}
+          pendingImages={pendingImages}
+          imageError={imageError}
+          onRetryImageUpload={handleRetryImageUpload}
+          onClearImageError={handleClearImageError}
         />
       </div>
       <DragOverlay>
