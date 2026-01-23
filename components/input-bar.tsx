@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { VoiceButton, type VoiceButtonState } from "@/components/voice-button";
@@ -13,6 +13,7 @@ interface InputBarProps {
   onRecord?: () => void;
   onStopRecording?: () => void;
   onImagesPaste?: (files: File[]) => void;
+  pendingImages?: File[];
   voiceState?: VoiceButtonState;
   isProcessingText?: boolean;
   placeholder?: string;
@@ -26,12 +27,25 @@ export function InputBar({
   onRecord,
   onStopRecording,
   onImagesPaste,
+  pendingImages = [],
   voiceState = "idle",
   isProcessingText = false,
   placeholder = "Ajouter un todo...",
   className,
 }: InputBarProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Create object URLs for pending images
+  const imagePreviewUrls = useMemo(() => {
+    return pendingImages.map((file) => URL.createObjectURL(file));
+  }, [pendingImages]);
+
+  // Cleanup object URLs when they change
+  useEffect(() => {
+    return () => {
+      imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviewUrls]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && value.trim() && !isProcessingText) {
@@ -94,7 +108,25 @@ export function InputBar({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="mx-auto flex max-w-3xl items-center gap-2">
+      <div className="mx-auto max-w-3xl">
+        {/* Pending images preview */}
+        {pendingImages.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {imagePreviewUrls.map((url, index) => (
+              <div
+                key={`${pendingImages[index].name}-${index}`}
+                className="relative h-12 w-12 overflow-hidden rounded-md border border-border"
+              >
+                <img
+                  src={url}
+                  alt={`Preview ${index + 1}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Input
             type="text"
@@ -119,6 +151,7 @@ export function InputBar({
           onStop={onStopRecording}
           disabled={isProcessingText}
         />
+        </div>
       </div>
     </div>
   );
