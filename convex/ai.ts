@@ -208,8 +208,8 @@ export const processVoiceTodo = action({
     }
 
     // Step 2: Classify the todo (category + priority + cleaned content)
-    const classification: { 
-      category: string; 
+    const classification: {
+      category: string;
       priority: "low" | "medium" | "high";
       cleanedContent: string;
     } = await ctx.runAction(api.ai.classifyTodo, {
@@ -236,6 +236,105 @@ export const processVoiceTodo = action({
       content: classification.cleanedContent,
       category: classification.category,
       priority: classification.priority,
+    };
+  },
+});
+
+// Analyze image with Claude Vision to extract todo content
+export const analyzeImage = action({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args): Promise<{
+    content: string;
+    category: string;
+    priority: "low" | "medium" | "high";
+  }> => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+    }
+
+    // Get the image URL from storage
+    const imageUrl = await ctx.storage.getUrl(args.storageId);
+    if (!imageUrl) {
+      throw new Error("Could not retrieve image URL from storage");
+    }
+
+    const prompt = `Analyse cette image et extrais-en une tâche to-do.
+
+Si l'image contient du texte (note, liste, document, screenshot), extrais la tâche principale.
+Si l'image montre un objet, lieu, ou situation, décris ce qu'il faut faire en rapport avec cette image.
+
+Réponds UNIQUEMENT en JSON avec ce format:
+{
+  "content": "Description de la tâche à faire",
+  "category": "Catégorie appropriée (ex: Travail, Perso, Courses, Admin, Tech, etc.)",
+  "priority": "low | medium | high"
+}
+
+Règles:
+- content: une phrase claire et actionnable en français
+- category: un mot ou deux maximum
+- priority: "high" si urgent/important visible, "medium" par défaut, "low" si optionnel`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 200,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "url",
+                  url: imageUrl,
+                },
+              },
+              {
+                type: "text",
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Claude Vision API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    const textContent = result.content[0]?.text;
+
+    if (!textContent) {
+      throw new Error("No response from Claude Vision API");
+    }
+
+    const parsed = JSON.parse(textContent);
+
+    if (
+      !parsed.content ||
+      !parsed.category ||
+      !["low", "medium", "high"].includes(parsed.priority)
+    ) {
+      throw new Error("Invalid analysis response from Claude Vision API");
+    }
+
+    return {
+      content: parsed.content as string,
+      category: parsed.category as string,
+      priority: parsed.priority as "low" | "medium" | "high",
     };
   },
 });
