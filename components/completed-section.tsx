@@ -14,6 +14,7 @@ import { ChevronDown } from "lucide-react"
 export interface CompletedSectionProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
+  onImageClick?: (todoId: string, imageIndex: number) => void
   defaultOpen?: boolean
   className?: string
 }
@@ -21,6 +22,7 @@ export interface CompletedSectionProps {
 function CompletedSection({
   todos,
   onToggleComplete,
+  onImageClick,
   defaultOpen = false,
   className,
 }: CompletedSectionProps) {
@@ -66,6 +68,12 @@ function CompletedSection({
                 content={todo.content}
                 priority={todo.priority}
                 isCompleted={todo.isCompleted}
+                imageUrls={todo.imageUrls}
+                onImageClick={
+                  onImageClick
+                    ? (index) => onImageClick(todo.id, index)
+                    : undefined
+                }
                 onToggleComplete={
                   onToggleComplete
                     ? (checked) => onToggleComplete(todo.id, checked)

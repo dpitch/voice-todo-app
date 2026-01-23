@@ -157,3 +157,15 @@ export const remove = mutation({
     return args.id;
   },
 });
+
+export const getImageUrls = query({
+  args: {
+    storageIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const urls: (string | null)[] = await Promise.all(
+      args.storageIds.map((storageId) => ctx.storage.getUrl(storageId))
+    );
+    return urls.filter((url): url is string => url !== null);
+  },
+});

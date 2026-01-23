@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -9,6 +9,7 @@ import { TodoList, type Todo } from "@/components/todo-list";
 import { CompletedSection } from "@/components/completed-section";
 import { InputBar } from "@/components/input-bar";
 import { CategoryFilters } from "@/components/category-filters";
+import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { useAudioRecorder } from "@/lib/useAudioRecorder";
 import {
   DndContext,
@@ -29,6 +30,9 @@ export default function Home() {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [isProcessingText, setIsProcessingText] = useState(false);
   const [categoryChangedTodoId, setCategoryChangedTodoId] = useState<string | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const {
     state: recorderState,
     audioBlob,
@@ -39,6 +43,40 @@ export default function Home() {
 
   const todosData = useQuery(api.todos.list);
   const categoriesData = useQuery(api.todos.listCategories);
+
+  // Collect all unique storage IDs from todos for URL resolution
+  const allStorageIds = useMemo(() => {
+    if (!todosData) return [];
+    const ids: Id<"_storage">[] = [];
+    for (const todo of todosData) {
+      if (todo.imageStorageIds) {
+        ids.push(...todo.imageStorageIds);
+      }
+    }
+    return ids;
+  }, [todosData]);
+
+  // Query image URLs for all storage IDs
+  const imageUrlsData = useQuery(
+    api.todos.getImageUrls,
+    allStorageIds.length > 0 ? { storageIds: allStorageIds } : "skip"
+  );
+
+  // Create a map from storageId to URL for efficient lookup
+  const storageIdToUrl = useMemo(() => {
+    const map = new Map<string, string>();
+    if (imageUrlsData && allStorageIds.length > 0) {
+      // The query returns URLs in the same order as the input storageIds
+      let urlIndex = 0;
+      for (const storageId of allStorageIds) {
+        if (urlIndex < imageUrlsData.length) {
+          map.set(storageId, imageUrlsData[urlIndex]);
+          urlIndex++;
+        }
+      }
+    }
+    return map;
+  }, [imageUrlsData, allStorageIds]);
   const toggleComplete = useMutation(api.todos.toggleComplete);
   const updateCategory = useMutation(api.todos.updateCategory);
   const createCategory = useMutation(api.todos.createCategory);
@@ -107,13 +145,22 @@ export default function Home() {
     })
   );
 
-  const todos: Todo[] = (todosData ?? []).map((todo) => ({
-    id: todo._id,
-    content: todo.content,
-    priority: todo.priority,
-    isCompleted: todo.isCompleted,
-    category: todo.category,
-  }));
+  const todos: Todo[] = (todosData ?? []).map((todo) => {
+    // Resolve image URLs from storage IDs
+    const imageUrls = todo.imageStorageIds
+      ?.map((storageId) => storageIdToUrl.get(storageId))
+      .filter((url): url is string => url !== undefined);
+
+    return {
+      id: todo._id,
+      content: todo.content,
+      priority: todo.priority,
+      isCompleted: todo.isCompleted,
+      category: todo.category,
+      imageStorageIds: todo.imageStorageIds,
+      imageUrls: imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
+    };
+  });
 
   const activeTodos = todos.filter((todo) => !todo.isCompleted);
   
@@ -157,6 +204,15 @@ export default function Home() {
 
   const handleToggleComplete = async (id: string) => {
     await toggleComplete({ id: id as Id<"todos"> });
+  };
+
+  const handleImageClick = (todoId: string, imageIndex: number) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (todo?.imageUrls && todo.imageUrls.length > 0) {
+      setSelectedImages(todo.imageUrls);
+      setSelectedImageIndex(imageIndex);
+      setIsImageModalOpen(true);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -232,11 +288,13 @@ export default function Home() {
           <TodoList
             todos={filteredTodos}
             onToggleComplete={handleToggleComplete}
+            onImageClick={handleImageClick}
             categoryChangedTodoId={categoryChangedTodoId}
           />
           <CompletedSection
             todos={todos}
             onToggleComplete={handleToggleComplete}
+            onImageClick={handleImageClick}
           />
         </main>
         <InputBar
@@ -256,6 +314,12 @@ export default function Home() {
           </div>
         ) : null}
       </DragOverlay>
+      <ImagePreviewModal
+        images={selectedImages}
+        initialIndex={selectedImageIndex}
+        open={isImageModalOpen}
+        onOpenChange={setIsImageModalOpen}
+      />
     </DndContext>
   );
 }
