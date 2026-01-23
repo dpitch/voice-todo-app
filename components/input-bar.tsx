@@ -11,6 +11,7 @@ interface InputBarProps {
   onSubmit?: (value: string) => void;
   onRecord?: () => void;
   onStopRecording?: () => void;
+  onImagesPaste?: (files: File[]) => void;
   voiceState?: VoiceButtonState;
   isProcessingText?: boolean;
   placeholder?: string;
@@ -23,6 +24,7 @@ export function InputBar({
   onSubmit,
   onRecord,
   onStopRecording,
+  onImagesPaste,
   voiceState = "idle",
   isProcessingText = false,
   placeholder = "Ajouter un todo...",
@@ -31,6 +33,20 @@ export function InputBar({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && value.trim() && !isProcessingText) {
       onSubmit?.(value.trim());
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const files = e.clipboardData?.files;
+    if (!files || files.length === 0) return;
+
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      onImagesPaste?.(imageFiles);
     }
   };
 
@@ -49,6 +65,7 @@ export function InputBar({
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={placeholder}
             className="flex-1 pr-8"
             aria-label="Task input"
