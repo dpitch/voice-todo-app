@@ -8,6 +8,64 @@ export const list = query({
   },
 });
 
+// Categories queries and mutations
+export const listCategories = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("categories").withIndex("by_createdAt").order("asc").collect();
+  },
+});
+
+export const createCategory = mutation({
+  args: {
+    name: v.string(),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Check if category already exists
+    const existing = await ctx.db
+      .query("categories")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+    
+    if (existing) {
+      return existing._id;
+    }
+
+    const categoryId = await ctx.db.insert("categories", {
+      name: args.name,
+      color: args.color,
+      createdAt: Date.now(),
+    });
+    return categoryId;
+  },
+});
+
+export const deleteCategory = mutation({
+  args: {
+    id: v.id("categories"),
+  },
+  handler: async (ctx, args) => {
+    const category = await ctx.db.get(args.id);
+    if (!category) {
+      throw new Error("Category not found");
+    }
+    
+    // Move all todos in this category to "General"
+    const todosInCategory = await ctx.db
+      .query("todos")
+      .withIndex("by_category", (q) => q.eq("category", category.name))
+      .collect();
+    
+    for (const todo of todosInCategory) {
+      await ctx.db.patch(todo._id, { category: "General" });
+    }
+
+    await ctx.db.delete(args.id);
+    return args.id;
+  },
+});
+
 export const listByCategory = query({
   args: { category: v.string() },
   handler: async (ctx, args) => {
@@ -27,6 +85,7 @@ export const create = mutation({
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const todoId = await ctx.db.insert("todos", {
@@ -36,6 +95,7 @@ export const create = mutation({
       isCompleted: args.isCompleted,
       completedAt: args.completedAt,
       createdAt: args.createdAt,
+      imageStorageIds: args.imageStorageIds,
     });
     return todoId;
   },

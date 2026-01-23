@@ -27,6 +27,7 @@ export default function Home() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [isProcessingText, setIsProcessingText] = useState(false);
   const [categoryChangedTodoId, setCategoryChangedTodoId] = useState<string | null>(null);
   const {
     state: recorderState,
@@ -37,12 +38,24 @@ export default function Home() {
   } = useAudioRecorder();
 
   const todosData = useQuery(api.todos.list);
-  const createTodo = useMutation(api.todos.create);
+  const categoriesData = useQuery(api.todos.listCategories);
   const toggleComplete = useMutation(api.todos.toggleComplete);
   const updateCategory = useMutation(api.todos.updateCategory);
+  const createCategory = useMutation(api.todos.createCategory);
+  const deleteCategory = useMutation(api.todos.deleteCategory);
   const processVoiceTodo = useAction(api.ai.processVoiceTodo);
+  const processTextTodo = useAction(api.ai.processTextTodo);
 
   const voiceState = isProcessingVoice ? "processing" : recorderState;
+  const isProcessing = isProcessingVoice || isProcessingText;
+
+  // Get all existing category names for AI classification
+  const existingCategoryNames = [
+    ...new Set([
+      ...(categoriesData ?? []).map((c) => c.name),
+      ...(todosData ?? []).map((t) => t.category),
+    ]),
+  ];
 
   const processAudioBlob = useCallback(
     async (blob: Blob) => {
@@ -63,7 +76,10 @@ export default function Home() {
           reader.readAsDataURL(blob);
         });
 
-        await processVoiceTodo({ audioData: base64 });
+        await processVoiceTodo({ 
+          audioData: base64,
+          existingCategories: existingCategoryNames,
+        });
       } catch (error) {
         console.error("Voice processing failed:", error);
       } finally {
@@ -71,7 +87,7 @@ export default function Home() {
         resetRecording();
       }
     },
-    [processVoiceTodo, resetRecording]
+    [processVoiceTodo, resetRecording, existingCategoryNames]
   );
 
   useEffect(() => {
@@ -100,20 +116,43 @@ export default function Home() {
   }));
 
   const activeTodos = todos.filter((todo) => !todo.isCompleted);
-  const categories = [...new Set(activeTodos.map((todo) => todo.category))].sort();
+  
+  // Combine categories from saved categories table and from todos
+  const categories = [...new Set([
+    ...(categoriesData ?? []).map((c) => c.name),
+    ...activeTodos.map((todo) => todo.category),
+  ])].sort();
+  
   const filteredTodos = activeFilter
     ? activeTodos.filter((todo) => todo.category === activeFilter)
     : activeTodos;
 
+  const handleAddCategory = async (name: string) => {
+    await createCategory({ name });
+  };
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    const category = categoriesData?.find((c) => c.name === categoryName);
+    if (category) {
+      await deleteCategory({ id: category._id });
+    }
+  };
+
   const handleSubmit = async (value: string) => {
-    await createTodo({
-      content: value,
-      category: "General",
-      priority: "medium",
-      isCompleted: false,
-      createdAt: Date.now(),
-    });
-    setInputValue("");
+    if (isProcessing) return;
+    
+    setIsProcessingText(true);
+    try {
+      await processTextTodo({
+        content: value,
+        existingCategories: existingCategoryNames,
+      });
+      setInputValue("");
+    } catch (error) {
+      console.error("Text processing failed:", error);
+    } finally {
+      setIsProcessingText(false);
+    }
   };
 
   const handleToggleComplete = async (id: string) => {
@@ -187,6 +226,8 @@ export default function Home() {
             categories={categories}
             activeCategory={activeFilter}
             onCategoryChange={setActiveFilter}
+            onAddCategory={handleAddCategory}
+            onDeleteCategory={handleDeleteCategory}
           />
           <TodoList
             todos={filteredTodos}
@@ -205,6 +246,7 @@ export default function Home() {
           voiceState={voiceState}
           onRecord={startRecording}
           onStopRecording={stopRecording}
+          isProcessingText={isProcessingText}
         />
       </div>
       <DragOverlay>

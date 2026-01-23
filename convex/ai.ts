@@ -338,3 +338,77 @@ Règles:
     };
   },
 });
+
+// Process an image todo - either analyze with Vision or use provided text
+export const processImageTodo = action({
+  args: {
+    storageIds: v.array(v.id("_storage")),
+    userText: v.optional(v.string()),
+    existingCategories: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args): Promise<{
+    todoId: string;
+    content: string;
+    category: string;
+    priority: "low" | "medium" | "high";
+  }> => {
+    let content: string;
+    let category: string;
+    let priority: "low" | "medium" | "high";
+
+    if (args.userText && args.userText.trim() !== "") {
+      // User provided text - skip Vision analysis, use classifyTodo instead
+      const classification: {
+        category: string;
+        priority: "low" | "medium" | "high";
+        cleanedContent: string;
+      } = await ctx.runAction(api.ai.classifyTodo, {
+        content: args.userText,
+        existingCategories: args.existingCategories,
+      });
+
+      content = classification.cleanedContent;
+      category = classification.category;
+      priority = classification.priority;
+    } else {
+      // No user text - analyze the first image with Vision
+      if (args.storageIds.length === 0) {
+        throw new Error("No images provided and no user text");
+      }
+
+      const analysis: {
+        content: string;
+        category: string;
+        priority: "low" | "medium" | "high";
+      } = await ctx.runAction(api.ai.analyzeImage, {
+        storageId: args.storageIds[0],
+      });
+
+      content = analysis.content;
+      category = analysis.category;
+      priority = analysis.priority;
+    }
+
+    // Create the todo with imageStorageIds
+    const todoId: string = await ctx.runMutation(api.todos.create, {
+      content,
+      category,
+      priority,
+      isCompleted: false,
+      createdAt: Date.now(),
+      imageStorageIds: args.storageIds,
+    });
+
+    // Ensure the category exists in the categories table
+    await ctx.runMutation(api.todos.createCategory, {
+      name: category,
+    });
+
+    return {
+      todoId,
+      content,
+      category,
+      priority,
+    };
+  },
+});
