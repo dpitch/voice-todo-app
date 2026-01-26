@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header() {
   return (
@@ -10,9 +11,12 @@ export function Header() {
       <h1 className="text-xl font-semibold text-foreground">
         📋 VoiceTodo
       </h1>
-      <Button variant="ghost" size="icon" aria-label="Settings">
-        <Settings className="size-5" />
-      </Button>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        <Button variant="ghost" size="icon" aria-label="Settings">
+          <Settings className="size-5" />
+        </Button>
+      </div>
     </header>
   );
 }

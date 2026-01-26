@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input"
 
 export interface CategoryFiltersProps {
   categories: string[]
-  activeCategory?: string | null
-  onCategoryChange?: (category: string | null) => void
+  activeCategories?: string[]
+  onCategoryChange?: (categories: string[]) => void
   onAddCategory?: (name: string) => void
   onDeleteCategory?: (name: string) => void
   className?: string
@@ -20,7 +20,7 @@ export interface CategoryFiltersProps {
 interface CategoryChipProps {
   category: string
   isActive: boolean
-  onClick: () => void
+  onClick: (event: React.MouseEvent) => void
   onDelete?: () => void
   showDelete?: boolean
 }
@@ -43,7 +43,7 @@ function CategoryChip({ category, isActive, onClick, onDelete, showDelete }: Cat
         data-active={isActive}
         data-category={category}
         data-drag-over={isOver}
-        onClick={onClick}
+        onClick={(e) => onClick(e)}
         className={cn(
           "inline-flex items-center rounded-full px-3 py-1",
           "text-sm font-medium transition-colors",
@@ -82,7 +82,7 @@ function CategoryChip({ category, isActive, onClick, onDelete, showDelete }: Cat
 
 function CategoryFilters({
   categories,
-  activeCategory = null,
+  activeCategories = [],
   onCategoryChange,
   onAddCategory,
   onDeleteCategory,
@@ -92,10 +92,26 @@ function CategoryFilters({
   const [newCategoryName, setNewCategoryName] = useState("")
   const [isEditMode, setIsEditMode] = useState(false)
 
-  const handleChipClick = (category: string) => {
+  const handleChipClick = (category: string, event: React.MouseEvent) => {
     if (isEditMode) return
     if (onCategoryChange) {
-      onCategoryChange(activeCategory === category ? null : category)
+      const isMultiSelect = event.metaKey // Cmd on Mac
+
+      if (isMultiSelect) {
+        // Multi-select: toggle in the list
+        if (activeCategories.includes(category)) {
+          onCategoryChange(activeCategories.filter((c) => c !== category))
+        } else {
+          onCategoryChange([...activeCategories, category])
+        }
+      } else {
+        // Simple click: select only this theme (or deselect if already the only active)
+        if (activeCategories.length === 1 && activeCategories[0] === category) {
+          onCategoryChange([])
+        } else {
+          onCategoryChange([category])
+        }
+      }
     }
   }
 
@@ -190,14 +206,29 @@ function CategoryFilters({
           role="group"
           aria-label="Filter by category"
         >
+          {activeCategories.length > 0 && (
+            <button
+              key="clear-filters"
+              type="button"
+              onClick={() => onCategoryChange?.([])}
+              className={cn(
+                "inline-flex items-center justify-center rounded-full p-1.5",
+                "text-sm transition-colors",
+                "bg-muted hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+              )}
+              aria-label="Effacer tous les filtres"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
           {categories.map((category) => {
-            const isActive = activeCategory === category
+            const isActive = activeCategories.includes(category)
             return (
               <CategoryChip
                 key={category}
                 category={category}
                 isActive={isActive}
-                onClick={() => handleChipClick(category)}
+                onClick={(e) => handleChipClick(category, e)}
                 onDelete={onDeleteCategory ? () => onDeleteCategory(category) : undefined}
                 showDelete={isEditMode}
               />

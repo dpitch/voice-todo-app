@@ -41,12 +41,12 @@ describe("Convex Schema", () => {
     expect(fields.isCompleted.kind).toBe("boolean");
 
     // completedAt should be optional (wrapped in optional validator)
-    // The inner type is float64, which is the actual stored type
-    expect(fields.completedAt.kind).toBe("float64");
-    expect(fields.completedAt.isOptional).toBe("optional");
+    expect(fields.completedAt.kind).toBe("optional");
+    // The inner type is number
+    expect(fields.completedAt.inner.kind).toBe("number");
 
     // createdAt should be a number
-    expect(fields.createdAt.kind).toBe("float64");
+    expect(fields.createdAt.kind).toBe("number");
   });
 
   it("should have indexes defined", () => {

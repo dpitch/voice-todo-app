@@ -38,12 +38,18 @@ describe("TodoItem component", () => {
     expect(checkbox).toBeChecked();
   });
 
-  it("calls onToggleComplete when checkbox is clicked", () => {
+  it("calls onToggleComplete when checkbox is clicked (after celebration animation)", () => {
+    jest.useFakeTimers();
     const handleToggle = jest.fn();
     render(<TodoItem {...defaultProps} onToggleComplete={handleToggle} />);
     const checkbox = screen.getByRole("checkbox");
     fireEvent.click(checkbox);
+    
+    // The callback is delayed by 1200ms for the celebration animation
+    expect(handleToggle).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1200);
     expect(handleToggle).toHaveBeenCalledWith(true);
+    jest.useRealTimers();
   });
 
   it("checkbox has accessible label", () => {

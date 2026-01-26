@@ -85,7 +85,15 @@ describe("TodoList component", () => {
   })
 
   describe("toggle complete functionality", () => {
-    it("calls onToggleComplete with correct id when todo is toggled", () => {
+    beforeEach(() => {
+      jest.useFakeTimers()
+    })
+
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    it("calls onToggleComplete with correct id when todo is toggled (after celebration animation)", () => {
       const handleToggle = jest.fn()
       render(<TodoList todos={sampleTodos} onToggleComplete={handleToggle} />)
 
@@ -94,10 +102,13 @@ describe("TodoList component", () => {
       })
       fireEvent.click(checkbox)
 
+      // The callback is delayed by 1200ms for the celebration animation
+      expect(handleToggle).not.toHaveBeenCalled()
+      jest.advanceTimersByTime(1200)
       expect(handleToggle).toHaveBeenCalledWith("1", true)
     })
 
-    it("calls onToggleComplete with false when completed todo is toggled", () => {
+    it("calls onToggleComplete with false immediately when completed todo is toggled", () => {
       const handleToggle = jest.fn()
       render(<TodoList todos={sampleTodos} onToggleComplete={handleToggle} />)
 
@@ -106,6 +117,7 @@ describe("TodoList component", () => {
       })
       fireEvent.click(checkbox)
 
+      // Unchecking is immediate (no celebration animation)
       expect(handleToggle).toHaveBeenCalledWith("4", false)
     })
   })
@@ -162,7 +174,8 @@ describe("CategorySection component", () => {
     expect(list).toBeInTheDocument()
   })
 
-  it("calls onToggleComplete when a todo is toggled", () => {
+  it("calls onToggleComplete when a todo is toggled (after celebration animation)", () => {
+    jest.useFakeTimers()
     const handleToggle = jest.fn()
     render(
       <CategorySection
@@ -177,7 +190,11 @@ describe("CategorySection component", () => {
     })
     fireEvent.click(checkbox)
 
+    // The callback is delayed by 1200ms for the celebration animation
+    expect(handleToggle).not.toHaveBeenCalled()
+    jest.advanceTimersByTime(1200)
     expect(handleToggle).toHaveBeenCalledWith("1", true)
+    jest.useRealTimers()
   })
 })
 

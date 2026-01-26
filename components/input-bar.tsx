@@ -56,7 +56,9 @@ export function InputBar({
   }, [imagePreviewUrls]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && value.trim() && !isProcessingText) {
+    // Allow submission if there's text OR if there are pending images (for Vision analysis)
+    const canSubmit = value.trim() || pendingImages.length > 0;
+    if (e.key === "Enter" && canSubmit && !isProcessingText) {
       onSubmit?.(value.trim());
     }
   };

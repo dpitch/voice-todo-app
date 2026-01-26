@@ -86,6 +86,7 @@ export const create = mutation({
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
     imageStorageIds: v.optional(v.array(v.id("_storage"))),
+    isProcessing: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const todoId = await ctx.db.insert("todos", {
@@ -96,8 +97,41 @@ export const create = mutation({
       completedAt: args.completedAt,
       createdAt: args.createdAt,
       imageStorageIds: args.imageStorageIds,
+      isProcessing: args.isProcessing,
     });
     return todoId;
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("todos"),
+    content: v.optional(v.string()),
+    category: v.optional(v.string()),
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    isProcessing: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const todo = await ctx.db.get(args.id);
+    if (!todo) {
+      throw new Error("Todo not found");
+    }
+
+    const updates: Partial<{
+      content: string;
+      category: string;
+      priority: "low" | "medium" | "high";
+      isProcessing: boolean;
+    }> = {};
+
+    if (args.content !== undefined) updates.content = args.content;
+    if (args.category !== undefined) updates.category = args.category;
+    if (args.priority !== undefined) updates.priority = args.priority;
+    if (args.isProcessing !== undefined) updates.isProcessing = args.isProcessing;
+
+    await ctx.db.patch(args.id, updates);
+
+    return { ...todo, ...updates };
   },
 });
 

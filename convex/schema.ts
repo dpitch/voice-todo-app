@@ -10,6 +10,7 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
     imageStorageIds: v.optional(v.array(v.id("_storage"))),
+    isProcessing: v.optional(v.boolean()),
   })
     .index("by_category", ["category"])
     .index("by_priority", ["priority"])

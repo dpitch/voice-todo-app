@@ -1,6 +1,18 @@
 import { action, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
+
+// Helper to extract JSON from potentially markdown-wrapped responses
+function extractJson(text: string): string {
+  // Check if the response is wrapped in markdown code fences
+  const jsonBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonBlockMatch) {
+    return jsonBlockMatch[1].trim();
+  }
+  // Return as-is if no code fences found
+  return text.trim();
+}
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -103,7 +115,7 @@ export const classifyTodo = action({
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 100,
+        max_tokens: 1024,
         messages: [
           {
             role: "user",
@@ -125,7 +137,7 @@ export const classifyTodo = action({
       throw new Error("No response from Claude API");
     }
 
-    const parsed = JSON.parse(textContent);
+    const parsed = JSON.parse(extractJson(textContent));
 
     if (
       !parsed.category ||
@@ -142,19 +154,29 @@ export const classifyTodo = action({
   },
 });
 
-// Process a text todo (classify and create)
+// Process a text todo (create immediately, then classify and update)
 export const processTextTodo = action({
   args: {
     content: v.string(),
     existingCategories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args): Promise<{
-    todoId: string;
+    todoId: Id<"todos">;
     content: string;
     category: string;
     priority: "low" | "medium" | "high";
   }> => {
-    // Step 1: Classify the todo (category + priority + cleaned content)
+    // Step 1: Create the todo immediately with isProcessing: true
+    const todoId = await ctx.runMutation(api.todos.create, {
+      content: args.content,
+      category: "...",
+      priority: "medium",
+      isCompleted: false,
+      createdAt: Date.now(),
+      isProcessing: true,
+    });
+
+    // Step 2: Classify the todo (category + priority + cleaned content)
     const classification: { 
       category: string; 
       priority: "low" | "medium" | "high";
@@ -164,16 +186,16 @@ export const processTextTodo = action({
       existingCategories: args.existingCategories,
     });
 
-    // Step 2: Create the todo with cleaned content
-    const todoId: string = await ctx.runMutation(api.todos.create, {
+    // Step 3: Update the todo with the classification results
+    await ctx.runMutation(api.todos.update, {
+      id: todoId,
       content: classification.cleanedContent,
       category: classification.category,
       priority: classification.priority,
-      isCompleted: false,
-      createdAt: Date.now(),
+      isProcessing: false,
     });
 
-    // Step 3: Ensure the category exists in the categories table
+    // Step 4: Ensure the category exists in the categories table
     await ctx.runMutation(api.todos.createCategory, {
       name: classification.category,
     });
@@ -193,21 +215,33 @@ export const processVoiceTodo = action({
     existingCategories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args): Promise<{
-    todoId: string;
+    todoId: Id<"todos">;
     content: string;
     category: string;
     priority: "low" | "medium" | "high";
   }> => {
-    // Step 1: Transcribe audio to text
+    // Step 1: Create the todo immediately with isProcessing: true
+    const todoId = await ctx.runMutation(api.todos.create, {
+      content: "Transcription en cours...",
+      category: "...",
+      priority: "medium",
+      isCompleted: false,
+      createdAt: Date.now(),
+      isProcessing: true,
+    });
+
+    // Step 2: Transcribe audio to text
     const transcription: { text: string } = await ctx.runAction(api.ai.transcribeAudio, {
       audioData: args.audioData,
     });
 
     if (!transcription.text || transcription.text.trim() === "") {
+      // Delete the placeholder todo if transcription failed
+      await ctx.runMutation(api.todos.remove, { id: todoId });
       throw new Error("Transcription resulted in empty text");
     }
 
-    // Step 2: Classify the todo (category + priority + cleaned content)
+    // Step 3: Classify the todo (category + priority + cleaned content)
     const classification: {
       category: string;
       priority: "low" | "medium" | "high";
@@ -217,16 +251,16 @@ export const processVoiceTodo = action({
       existingCategories: args.existingCategories,
     });
 
-    // Step 3: Create the todo with cleaned content
-    const todoId: string = await ctx.runMutation(api.todos.create, {
+    // Step 4: Update the todo with the final results
+    await ctx.runMutation(api.todos.update, {
+      id: todoId,
       content: classification.cleanedContent,
       category: classification.category,
       priority: classification.priority,
-      isCompleted: false,
-      createdAt: Date.now(),
+      isProcessing: false,
     });
 
-    // Step 4: Ensure the category exists in the categories table
+    // Step 5: Ensure the category exists in the categories table
     await ctx.runMutation(api.todos.createCategory, {
       name: classification.category,
     });
@@ -321,7 +355,7 @@ Règles:
       throw new Error("No response from Claude Vision API");
     }
 
-    const parsed = JSON.parse(textContent);
+    const parsed = JSON.parse(extractJson(textContent));
 
     if (
       !parsed.content ||
@@ -347,11 +381,27 @@ export const processImageTodo = action({
     existingCategories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args): Promise<{
-    todoId: string;
+    todoId: Id<"todos">;
     content: string;
     category: string;
     priority: "low" | "medium" | "high";
   }> => {
+    // Determine placeholder content based on whether user provided text
+    const placeholderContent = args.userText && args.userText.trim() !== ""
+      ? args.userText
+      : "Analyse de l'image en cours...";
+
+    // Step 1: Create the todo immediately with isProcessing: true and images attached
+    const todoId = await ctx.runMutation(api.todos.create, {
+      content: placeholderContent,
+      category: "...",
+      priority: "medium",
+      isCompleted: false,
+      createdAt: Date.now(),
+      imageStorageIds: args.storageIds,
+      isProcessing: true,
+    });
+
     let content: string;
     let category: string;
     let priority: "low" | "medium" | "high";
@@ -389,17 +439,16 @@ export const processImageTodo = action({
       priority = analysis.priority;
     }
 
-    // Create the todo with imageStorageIds
-    const todoId: string = await ctx.runMutation(api.todos.create, {
+    // Step 2: Update the todo with the final results
+    await ctx.runMutation(api.todos.update, {
+      id: todoId,
       content,
       category,
       priority,
-      isCompleted: false,
-      createdAt: Date.now(),
-      imageStorageIds: args.storageIds,
+      isProcessing: false,
     });
 
-    // Ensure the category exists in the categories table
+    // Step 3: Ensure the category exists in the categories table
     await ctx.runMutation(api.todos.createCategory, {
       name: category,
     });

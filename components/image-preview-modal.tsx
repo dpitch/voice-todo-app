@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
@@ -73,6 +74,9 @@ function ImagePreviewModal({
         className="max-w-4xl p-0 overflow-hidden bg-black/90 border-none"
         showCloseButton
       >
+        <DialogTitle className="sr-only">
+          Image {currentIndex + 1} of {images.length}
+        </DialogTitle>
         <div className="relative flex items-center justify-center min-h-[300px] max-h-[80vh]">
           {/* Main image */}
           <img

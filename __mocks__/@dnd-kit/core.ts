@@ -6,10 +6,12 @@ export const DndContext = ({
   children: React.ReactNode
   sensors?: unknown
   collisionDetection?: unknown
+  onDragStart?: unknown
   onDragEnd?: unknown
 }) => children
 
 export const closestCenter = () => null
+export const pointerWithin = () => null
 export const KeyboardSensor = {}
 export const PointerSensor = {}
 export const useSensor = () => ({})

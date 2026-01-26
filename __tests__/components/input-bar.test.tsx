@@ -42,7 +42,7 @@ describe("InputBar component", () => {
 
   it("displays default placeholder text", () => {
     render(<InputBar />);
-    const input = screen.getByPlaceholderText("Add a new task...");
+    const input = screen.getByPlaceholderText("Ajouter un todo...");
     expect(input).toBeInTheDocument();
   });
 

@@ -58,7 +58,7 @@ describe("CategoryFilters drop zone functionality", () => {
 
     it("active chips maintain primary background", () => {
       renderWithDndContext(
-        <CategoryFilters categories={sampleCategories} activeCategory="Home" />
+        <CategoryFilters categories={sampleCategories} activeCategories={["Home"]} />
       )
 
       const chip = screen.getByText("Home")
@@ -70,13 +70,18 @@ describe("CategoryFilters drop zone functionality", () => {
     it("category chips remain accessible as buttons when used as drop targets", () => {
       renderWithDndContext(<CategoryFilters categories={sampleCategories} />)
 
-      const buttons = screen.getAllByRole("button")
-      expect(buttons).toHaveLength(3)
+      const chips = document.querySelectorAll("[data-slot='category-chip']")
+      expect(chips).toHaveLength(3)
+      
+      // Each chip should be a button
+      chips.forEach((chip) => {
+        expect(chip.tagName.toLowerCase()).toBe("button")
+      })
     })
 
     it("aria-pressed is maintained for drop target chips", () => {
       renderWithDndContext(
-        <CategoryFilters categories={sampleCategories} activeCategory="Shopping" />
+        <CategoryFilters categories={sampleCategories} activeCategories={["Shopping"]} />
       )
 
       const shoppingChip = screen.getByText("Shopping")

@@ -343,7 +343,7 @@ describe("useAudioRecorder hook", () => {
       expect(mockTrackStop).toHaveBeenCalled();
     });
 
-    it("stays in recording state until caller resets it", async () => {
+    it("goes to idle state and provides audioBlob after recording stops", async () => {
       const { result } = renderHook(() => useAudioRecorder());
 
       await act(async () => {
@@ -354,15 +354,16 @@ describe("useAudioRecorder hook", () => {
         mockOnStop?.();
       });
 
-      // State stays at recording until resetRecording is called
-      // This allows the caller to process the audioBlob before resetting
-      expect(result.current.state).toBe("recording");
+      // State goes to idle immediately after recording stops
+      // audioBlob is available for the caller to process
+      expect(result.current.state).toBe("idle");
       expect(result.current.audioBlob).not.toBeNull();
 
       act(() => {
         result.current.resetRecording();
       });
 
+      // After reset, audioBlob is cleared
       expect(result.current.state).toBe("idle");
       expect(result.current.audioBlob).toBeNull();
     });

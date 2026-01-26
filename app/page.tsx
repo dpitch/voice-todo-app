@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/header";
 import { TodoList, type Todo } from "@/components/todo-list";
+import { ProcessingSection } from "@/components/processing-section";
 import { CompletedSection } from "@/components/completed-section";
 import { InputBar } from "@/components/input-bar";
 import { CategoryFilters } from "@/components/category-filters";
@@ -18,6 +19,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  pointerWithin,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -25,10 +27,9 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 export default function Home() {
   const [inputValue, setInputValue] = useState("");
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const [isProcessingText, setIsProcessingText] = useState(false);
   const [categoryChangedTodoId, setCategoryChangedTodoId] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -82,6 +83,7 @@ export default function Home() {
   }, [imageUrlsData, allStorageIds]);
   const toggleComplete = useMutation(api.todos.toggleComplete);
   const updateCategory = useMutation(api.todos.updateCategory);
+  const updateTodo = useMutation(api.todos.update);
   const createCategory = useMutation(api.todos.createCategory);
   const deleteCategory = useMutation(api.todos.deleteCategory);
   const generateUploadUrl = useMutation(api.ai.generateUploadUrl);
@@ -90,7 +92,8 @@ export default function Home() {
   const processImageTodo = useAction(api.ai.processImageTodo);
 
   const voiceState = isProcessingVoice ? "processing" : recorderState;
-  const isProcessing = isProcessingVoice || isProcessingText || isUploadingImages;
+  // Only block input during voice recording conversion or image upload (not text processing)
+  const isProcessing = isProcessingVoice || isUploadingImages;
 
   // Get all existing category names for AI classification
   const existingCategoryNames = [
@@ -119,13 +122,19 @@ export default function Home() {
           reader.readAsDataURL(blob);
         });
 
-        await processVoiceTodo({ 
+        // Reset voice state immediately - the todo will appear in processing section
+        setIsProcessingVoice(false);
+        resetRecording();
+
+        // Process in background
+        processVoiceTodo({ 
           audioData: base64,
           existingCategories: existingCategoryNames,
+        }).catch((error) => {
+          console.error("Voice processing failed:", error);
         });
       } catch (error) {
         console.error("Voice processing failed:", error);
-      } finally {
         setIsProcessingVoice(false);
         resetRecording();
       }
@@ -164,20 +173,25 @@ export default function Home() {
       category: todo.category,
       imageStorageIds: todo.imageStorageIds,
       imageUrls: imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
+      isProcessing: todo.isProcessing ?? false,
     };
   });
 
   const activeTodos = todos.filter((todo) => !todo.isCompleted);
   
-  // Combine categories from saved categories table and from todos
+  // Separate processing todos from ready todos
+  const processingTodos = activeTodos.filter((todo) => todo.isProcessing);
+  const readyTodos = activeTodos.filter((todo) => !todo.isProcessing);
+  
+  // Combine categories from saved categories table and from ready todos only
   const categories = [...new Set([
     ...(categoriesData ?? []).map((c) => c.name),
-    ...activeTodos.map((todo) => todo.category),
-  ])].sort();
+    ...readyTodos.map((todo) => todo.category),
+  ])].filter((cat) => cat !== "...").sort();
   
-  const filteredTodos = activeFilter
-    ? activeTodos.filter((todo) => todo.category === activeFilter)
-    : activeTodos;
+  const filteredTodos = activeFilter.length > 0
+    ? readyTodos.filter((todo) => activeFilter.includes(todo.category))
+    : readyTodos;
 
   const handleAddCategory = async (name: string) => {
     await createCategory({ name });
@@ -199,23 +213,24 @@ export default function Home() {
       return;
     }
 
-    // Otherwise, process as regular text todo
-    setIsProcessingText(true);
-    try {
-      await processTextTodo({
-        content: value,
-        existingCategories: existingCategoryNames,
-      });
-      setInputValue("");
-    } catch (error) {
+    // Clear input immediately for instant feedback
+    setInputValue("");
+
+    // Process in background - the todo will appear immediately thanks to optimistic update
+    processTextTodo({
+      content: value,
+      existingCategories: existingCategoryNames,
+    }).catch((error) => {
       console.error("Text processing failed:", error);
-    } finally {
-      setIsProcessingText(false);
-    }
+    });
   };
 
   const handleToggleComplete = async (id: string) => {
     await toggleComplete({ id: id as Id<"todos"> });
+  };
+
+  const handleEditTodo = async (id: string, newContent: string) => {
+    await updateTodo({ id: id as Id<"todos">, content: newContent });
   };
 
   const handleImagesPaste = (files: File[]) => {
@@ -252,22 +267,27 @@ export default function Home() {
         storageIds.push(storageId as Id<"_storage">);
       }
 
-      // Step 2: Process the image todo
-      await processImageTodo({
+      // Clear state immediately after upload - todo will appear in processing section
+      setPendingImages([]);
+      setInputValue("");
+      setIsUploadingImages(false);
+
+      // Process in background
+      processImageTodo({
         storageIds,
         userText: userText?.trim() || undefined,
         existingCategories: existingCategoryNames,
+      }).catch((error) => {
+        console.error("Image processing failed:", error);
+        setImageError(
+          error instanceof Error ? error.message : "Erreur lors du traitement de l'image"
+        );
       });
-
-      // Clear state on success
-      setPendingImages([]);
-      setInputValue("");
     } catch (error) {
-      console.error("Image processing failed:", error);
+      console.error("Image upload failed:", error);
       setImageError(
-        error instanceof Error ? error.message : "Erreur lors du traitement de l'image"
+        error instanceof Error ? error.message : "Erreur lors de l'upload de l'image"
       );
-    } finally {
       setIsUploadingImages(false);
     }
   };
@@ -319,6 +339,26 @@ export default function Home() {
     }
   };
 
+  // Track previous processing todo IDs to detect when a todo finishes processing
+  const prevProcessingIdsRef = useRef<Set<string>>(new Set());
+  
+  // Detect when a todo finishes processing and trigger category change animation
+  useEffect(() => {
+    const currentProcessingIds = new Set(processingTodos.map((t) => t.id));
+    const prevProcessingIds = prevProcessingIdsRef.current;
+    
+    // Find todos that were processing but are no longer processing
+    for (const id of prevProcessingIds) {
+      if (!currentProcessingIds.has(id)) {
+        // This todo just finished processing - trigger animation
+        setCategoryChangedTodoId(id);
+        break; // Only animate one at a time
+      }
+    }
+    
+    prevProcessingIdsRef.current = currentProcessingIds;
+  }, [processingTodos]);
+
   // Clear category change animation after it completes
   useEffect(() => {
     if (categoryChangedTodoId) {
@@ -347,6 +387,7 @@ export default function Home() {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
@@ -355,20 +396,28 @@ export default function Home() {
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 pb-24">
           <CategoryFilters
             categories={categories}
-            activeCategory={activeFilter}
+            activeCategories={activeFilter}
             onCategoryChange={setActiveFilter}
             onAddCategory={handleAddCategory}
             onDeleteCategory={handleDeleteCategory}
           />
+          <ProcessingSection
+            todos={processingTodos}
+            onToggleComplete={handleToggleComplete}
+            onEdit={handleEditTodo}
+            onImageClick={handleImageClick}
+          />
           <TodoList
             todos={filteredTodos}
             onToggleComplete={handleToggleComplete}
+            onEdit={handleEditTodo}
             onImageClick={handleImageClick}
             categoryChangedTodoId={categoryChangedTodoId}
           />
           <CompletedSection
             todos={todos}
             onToggleComplete={handleToggleComplete}
+            onEdit={handleEditTodo}
             onImageClick={handleImageClick}
           />
         </main>
@@ -379,7 +428,7 @@ export default function Home() {
           voiceState={voiceState}
           onRecord={startRecording}
           onStopRecording={stopRecording}
-          isProcessingText={isProcessingText || isUploadingImages}
+          isProcessingText={isUploadingImages}
           onImagesPaste={handleImagesPaste}
           onRemoveImage={handleRemoveImage}
           pendingImages={pendingImages}

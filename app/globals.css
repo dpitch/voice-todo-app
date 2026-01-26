@@ -222,3 +222,277 @@
 .animate-category-change {
   animation: category-change 0.5s ease-out forwards;
 }
+
+/* Processing shimmer animation for todos being processed by AI */
+@keyframes processing-shimmer {
+  0%, 100% {
+    opacity: 0.7;
+    box-shadow: 0 0 0 0 var(--primary);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary) 20%, transparent);
+  }
+}
+
+.animate-processing-shimmer {
+  animation: processing-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Processing state indicator */
+[data-slot="todo-item"][data-processing="true"] {
+  border-color: color-mix(in oklch, var(--primary) 40%, transparent);
+}
+
+/* ============================================
+   COMPLETION CELEBRATION ANIMATIONS
+   ============================================ */
+
+/* Checkbox bounce animation when completing */
+@keyframes checkbox-bounce {
+  0% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(0.85);
+  }
+  30% {
+    transform: scale(1.15);
+  }
+  45% {
+    transform: scale(0.95);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  75% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Checkmark draw animation */
+@keyframes checkmark-draw {
+  0% {
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* Glow ring expanding outward */
+@keyframes completion-glow {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.2 145 / 0.6);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px oklch(0.7 0.2 145 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+    transform: scale(1);
+  }
+}
+
+/* Confetti particle base animation */
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Individual confetti particles with different trajectories */
+@keyframes confetti-1 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(-15px, -20px) scale(1.2) rotate(45deg); opacity: 1; }
+  100% { transform: translate(-25px, 10px) scale(0.3) rotate(180deg); opacity: 0; }
+}
+
+@keyframes confetti-2 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(15px, -22px) scale(1.2) rotate(-45deg); opacity: 1; }
+  100% { transform: translate(28px, 8px) scale(0.3) rotate(-180deg); opacity: 0; }
+}
+
+@keyframes confetti-3 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(-20px, -10px) scale(1.2) rotate(90deg); opacity: 1; }
+  100% { transform: translate(-30px, 15px) scale(0.3) rotate(270deg); opacity: 0; }
+}
+
+@keyframes confetti-4 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(20px, -12px) scale(1.2) rotate(-90deg); opacity: 1; }
+  100% { transform: translate(32px, 12px) scale(0.3) rotate(-270deg); opacity: 0; }
+}
+
+@keyframes confetti-5 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(0px, -25px) scale(1.2) rotate(0deg); opacity: 1; }
+  100% { transform: translate(0px, 5px) scale(0.3) rotate(360deg); opacity: 0; }
+}
+
+@keyframes confetti-6 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(-10px, -24px) scale(1.2) rotate(60deg); opacity: 1; }
+  100% { transform: translate(-18px, 6px) scale(0.3) rotate(240deg); opacity: 0; }
+}
+
+@keyframes confetti-7 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(10px, -24px) scale(1.2) rotate(-60deg); opacity: 1; }
+  100% { transform: translate(18px, 6px) scale(0.3) rotate(-240deg); opacity: 0; }
+}
+
+@keyframes confetti-8 {
+  0% { transform: translate(0, 0) scale(0) rotate(0deg); opacity: 1; }
+  20% { transform: translate(-22px, -5px) scale(1.2) rotate(120deg); opacity: 1; }
+  100% { transform: translate(-28px, 18px) scale(0.3) rotate(300deg); opacity: 0; }
+}
+
+/* Star sparkle animation */
+@keyframes sparkle {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1) rotate(180deg); opacity: 1; }
+  100% { transform: scale(0) rotate(360deg); opacity: 0; }
+}
+
+/* Completion checkbox styles */
+.checkbox-completing {
+  animation: checkbox-bounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards,
+             completion-glow 0.6s ease-out forwards;
+}
+
+/* Confetti container */
+.confetti-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Confetti particles */
+.confetti-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.confetti-particle:nth-child(1) {
+  background: oklch(0.7 0.25 30); /* Red-orange */
+  animation: confetti-1 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.confetti-particle:nth-child(2) {
+  background: oklch(0.75 0.2 145); /* Green */
+  animation: confetti-2 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.confetti-particle:nth-child(3) {
+  background: oklch(0.7 0.2 270); /* Purple */
+  animation: confetti-3 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.05s;
+}
+
+.confetti-particle:nth-child(4) {
+  background: oklch(0.8 0.2 80); /* Yellow */
+  animation: confetti-4 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.05s;
+}
+
+.confetti-particle:nth-child(5) {
+  background: oklch(0.65 0.25 220); /* Blue */
+  animation: confetti-5 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.1s;
+}
+
+.confetti-particle:nth-child(6) {
+  background: oklch(0.7 0.22 340); /* Pink */
+  animation: confetti-6 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.1s;
+}
+
+.confetti-particle:nth-child(7) {
+  background: oklch(0.75 0.18 180); /* Cyan */
+  animation: confetti-7 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.08s;
+}
+
+.confetti-particle:nth-child(8) {
+  background: oklch(0.8 0.22 50); /* Orange */
+  animation: confetti-8 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation-delay: 0.08s;
+}
+
+/* Sparkle stars */
+.sparkle-star {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: oklch(0.9 0.15 80); /* Golden yellow */
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
+    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
+  );
+}
+
+.sparkle-star:nth-child(1) {
+  animation: sparkle 0.6s ease-out 0.1s forwards;
+  top: -20px;
+  left: -15px;
+}
+
+.sparkle-star:nth-child(2) {
+  animation: sparkle 0.6s ease-out 0.25s forwards;
+  top: -18px;
+  left: 12px;
+  width: 6px;
+  height: 6px;
+}
+
+.sparkle-star:nth-child(3) {
+  animation: sparkle 0.6s ease-out 0.4s forwards;
+  top: -8px;
+  left: -22px;
+  width: 5px;
+  height: 5px;
+}
+
+/* Success glow animation for completed todo */
+@keyframes card-completion-glow {
+  0% {
+    background-color: var(--card);
+    box-shadow: 0 0 0 0 oklch(0.7 0.2 145 / 0);
+  }
+  30% {
+    background-color: color-mix(in oklch, oklch(0.7 0.2 145) 20%, var(--card));
+    box-shadow: 0 0 25px oklch(0.7 0.2 145 / 0.4);
+  }
+  70% {
+    background-color: color-mix(in oklch, oklch(0.7 0.2 145) 12%, var(--card));
+    box-shadow: 0 0 15px oklch(0.7 0.2 145 / 0.2);
+  }
+  100% {
+    background-color: var(--card);
+    box-shadow: 0 0 0 0 oklch(0.7 0.2 145 / 0);
+  }
+}
+
+.animate-completion-flash {
+  animation: card-completion-glow 1.2s ease-out forwards;
+}

@@ -22,11 +22,13 @@ export interface Todo {
   category: string
   imageStorageIds?: string[]
   imageUrls?: string[]
+  isProcessing?: boolean
 }
 
 export interface TodoListProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
+  onEdit?: (id: string, newContent: string) => void
   onImageClick?: (todoId: string, imageIndex: number) => void
   className?: string
   categoryChangedTodoId?: string | null
@@ -45,6 +47,7 @@ interface CategorySectionProps {
   category: string
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
+  onEdit?: (id: string, newContent: string) => void
   onImageClick?: (todoId: string, imageIndex: number) => void
   defaultOpen?: boolean
   categoryChangedTodoId?: string | null
@@ -54,6 +57,7 @@ function CategorySection({
   category,
   todos,
   onToggleComplete,
+  onEdit,
   onImageClick,
   defaultOpen = true,
   categoryChangedTodoId,
@@ -105,6 +109,7 @@ function CategorySection({
                   priority={todo.priority}
                   isCompleted={todo.isCompleted}
                   isCategoryChanged={todo.id === categoryChangedTodoId}
+                  isProcessing={todo.isProcessing}
                   imageUrls={todo.imageUrls}
                   onImageClick={
                     onImageClick
@@ -114,6 +119,11 @@ function CategorySection({
                   onToggleComplete={
                     onToggleComplete
                       ? (checked) => onToggleComplete(todo.id, checked)
+                      : undefined
+                  }
+                  onEdit={
+                    onEdit
+                      ? (newContent) => onEdit(todo.id, newContent)
                       : undefined
                   }
                 />
@@ -126,7 +136,7 @@ function CategorySection({
   )
 }
 
-function TodoList({ todos, onToggleComplete, onImageClick, className, categoryChangedTodoId }: TodoListProps) {
+function TodoList({ todos, onToggleComplete, onEdit, onImageClick, className, categoryChangedTodoId }: TodoListProps) {
   const groupedTodos = groupTodosByCategory(todos)
   const categories = Array.from(groupedTodos.keys()).sort()
 
@@ -152,6 +162,7 @@ function TodoList({ todos, onToggleComplete, onImageClick, className, categoryCh
           category={category}
           todos={groupedTodos.get(category)!}
           onToggleComplete={onToggleComplete}
+          onEdit={onEdit}
           onImageClick={onImageClick}
           categoryChangedTodoId={categoryChangedTodoId}
         />

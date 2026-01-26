@@ -22,6 +22,27 @@ export const action = (config: {
   isAction: true,
 });
 
+export const internalQuery = query;
+export const internalMutation = mutation;
+export const internalAction = action;
+
+// Mock anyApi for generated API files
+export const anyApi = new Proxy(
+  {},
+  {
+    get: () =>
+      new Proxy(
+        {},
+        {
+          get: () => "mock-function-reference",
+        }
+      ),
+  }
+);
+
+// Mock componentsGeneric for generated API files
+export const componentsGeneric = () => ({});
+
 interface TableConfig {
   validator: { kind: string; fields: Record<string, unknown> };
   indexes: Array<{ indexDescriptor: string; fields: string[] }>;

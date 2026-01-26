@@ -72,7 +72,12 @@ describe("Home page", () => {
   const mockCreateTodo = jest.fn();
   const mockToggleComplete = jest.fn();
   const mockUpdateCategory = jest.fn();
+  const mockCreateCategory = jest.fn();
+  const mockDeleteCategory = jest.fn();
+  const mockGenerateUploadUrl = jest.fn();
   const mockProcessVoiceTodo = jest.fn();
+  const mockProcessTextTodo = jest.fn();
+  const mockProcessImageTodo = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,13 +85,27 @@ describe("Home page", () => {
     mockAudioRecorderState.recorderState = "idle";
     mockAudioRecorderState.audioBlob = null;
     mockAudioRecorderState.error = null;
+    
+    // Set default return values for action mocks (they return promises)
+    mockProcessVoiceTodo.mockReturnValue(Promise.resolve());
+    mockProcessTextTodo.mockReturnValue(Promise.resolve());
+    mockProcessImageTodo.mockReturnValue(Promise.resolve());
+    
     mockUseMutation.mockImplementation((mutationName: string) => {
       if (mutationName === "todos.create") return mockCreateTodo;
       if (mutationName === "todos.toggleComplete") return mockToggleComplete;
       if (mutationName === "todos.updateCategory") return mockUpdateCategory;
+      if (mutationName === "todos.createCategory") return mockCreateCategory;
+      if (mutationName === "todos.deleteCategory") return mockDeleteCategory;
+      if (mutationName === "ai.generateUploadUrl") return mockGenerateUploadUrl;
       return jest.fn();
     });
-    mockUseAction.mockReturnValue(mockProcessVoiceTodo);
+    mockUseAction.mockImplementation((actionName: string) => {
+      if (actionName === "ai.processVoiceTodo") return mockProcessVoiceTodo;
+      if (actionName === "ai.processTextTodo") return mockProcessTextTodo;
+      if (actionName === "ai.processImageTodo") return mockProcessImageTodo;
+      return jest.fn();
+    });
   });
 
   it("shows loading state when data is undefined", () => {
@@ -168,9 +187,9 @@ describe("Home page", () => {
     expect(screen.getByText(/Terminés/)).toBeInTheDocument();
   });
 
-  it("calls createTodo mutation when submitting a new todo", async () => {
+  it("calls processTextTodo action when submitting a new todo", async () => {
     mockUseQuery.mockReturnValue([]);
-    mockCreateTodo.mockResolvedValue("new-todo-id");
+    mockProcessTextTodo.mockReturnValue(Promise.resolve("new-todo-id"));
 
     render(<Home />);
 
@@ -179,19 +198,16 @@ describe("Home page", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     await waitFor(() => {
-      expect(mockCreateTodo).toHaveBeenCalledWith({
+      expect(mockProcessTextTodo).toHaveBeenCalledWith({
         content: "New task",
-        category: "General",
-        priority: "medium",
-        isCompleted: false,
-        createdAt: expect.any(Number),
+        existingCategories: [],
       });
     });
   });
 
   it("clears input after submitting a todo", async () => {
     mockUseQuery.mockReturnValue([]);
-    mockCreateTodo.mockResolvedValue("new-todo-id");
+    mockProcessTextTodo.mockReturnValue(Promise.resolve("new-todo-id"));
 
     render(<Home />);
 
@@ -204,7 +220,8 @@ describe("Home page", () => {
     });
   });
 
-  it("calls toggleComplete mutation when toggling a todo", async () => {
+  it("calls toggleComplete mutation when toggling a todo (after celebration animation)", async () => {
+    jest.useFakeTimers();
     mockUseQuery.mockReturnValue([
       {
         _id: "todo-1",
@@ -222,9 +239,15 @@ describe("Home page", () => {
     const checkbox = screen.getByRole("checkbox");
     fireEvent.click(checkbox);
 
+    // The callback is delayed by 1200ms for the celebration animation
+    expect(mockToggleComplete).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1200);
+    
     await waitFor(() => {
       expect(mockToggleComplete).toHaveBeenCalledWith({ id: "todo-1" });
     });
+    
+    jest.useRealTimers();
   });
 
   it("displays todos grouped by category", () => {
