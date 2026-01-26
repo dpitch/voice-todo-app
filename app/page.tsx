@@ -11,6 +11,8 @@ import { CompletedSection } from "@/components/completed-section";
 import { InputBar } from "@/components/input-bar";
 import { CategoryFilters } from "@/components/category-filters";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
+import { WorkSlots, type WorkSlotData } from "@/components/work-slots";
+import { type SlotTodo } from "@/components/work-slot";
 import { useAudioRecorder } from "@/lib/useAudioRecorder";
 import {
   DndContext,
@@ -90,6 +92,14 @@ export default function Home() {
   const processVoiceTodo = useAction(api.ai.processVoiceTodo);
   const processTextTodo = useAction(api.ai.processTextTodo);
   const processImageTodo = useAction(api.ai.processImageTodo);
+
+  // Work Slots queries and mutations
+  const workSlotsData = useQuery(api.workSlots.list);
+  const createWorkSlot = useMutation(api.workSlots.create);
+  const assignTodoToSlot = useMutation(api.workSlots.assignTodo);
+  const updateSlotNotes = useMutation(api.workSlots.updateNotes);
+  const clearWorkSlot = useMutation(api.workSlots.clear);
+  const deleteWorkSlot = useMutation(api.workSlots.remove);
 
   const voiceState = isProcessingVoice ? "processing" : recorderState;
   // Only block input during voice recording conversion or image upload (not text processing)
@@ -174,8 +184,25 @@ export default function Home() {
       imageStorageIds: todo.imageStorageIds,
       imageUrls: imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
       isProcessing: todo.isProcessing ?? false,
+      isActive: todo.isActive ?? false,
     };
   });
+
+  // Create a map of todos for work slots
+  const todosForSlots = useMemo(() => {
+    const map = new Map<string, SlotTodo>();
+    for (const todo of todos) {
+      if (!todo.isCompleted && !todo.isProcessing) {
+        map.set(todo.id, {
+          id: todo.id,
+          content: todo.content,
+          priority: todo.priority,
+          category: todo.category,
+        });
+      }
+    }
+    return map;
+  }, [todos]);
 
   const activeTodos = todos.filter((todo) => !todo.isCompleted);
   
@@ -310,6 +337,27 @@ export default function Home() {
     }
   };
 
+  // Work Slots handlers
+  const handleCreateSlot = async () => {
+    await createWorkSlot({});
+  };
+
+  const handleUpdateSlotNotes = useCallback(async (slotId: Id<"workSlots">, notes: string) => {
+    await updateSlotNotes({ slotId, notes });
+  }, [updateSlotNotes]);
+
+  const handleClearSlot = async (slotId: Id<"workSlots">) => {
+    await clearWorkSlot({ slotId });
+  };
+
+  const handleDeleteSlot = async (slotId: Id<"workSlots">) => {
+    await deleteWorkSlot({ slotId });
+  };
+
+  const handleCompleteTodoFromSlot = async (todoId: string) => {
+    await toggleComplete({ id: todoId as Id<"todos"> });
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(String(event.active.id));
   };
@@ -320,10 +368,21 @@ export default function Home() {
 
     if (!over) return;
 
-    // Check if dropped on a category chip
     const overData = over.data.current;
+    const todoId = String(active.id);
+
+    // Check if dropped on a work slot
+    if (overData?.type === "workSlot") {
+      const slotId = overData.slotId as Id<"workSlots">;
+      assignTodoToSlot({
+        slotId,
+        todoId: todoId as Id<"todos">,
+      });
+      return;
+    }
+
+    // Check if dropped on a category chip
     if (overData?.type === "category") {
-      const todoId = String(active.id);
       const targetCategory = overData.category as string;
       const todo = todos.find((t) => t.id === todoId);
 
@@ -393,34 +452,73 @@ export default function Home() {
     >
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 pb-24">
-          <CategoryFilters
-            categories={categories}
-            activeCategories={activeFilter}
-            onCategoryChange={setActiveFilter}
-            onAddCategory={handleAddCategory}
-            onDeleteCategory={handleDeleteCategory}
-          />
-          <ProcessingSection
-            todos={processingTodos}
-            onToggleComplete={handleToggleComplete}
-            onEdit={handleEditTodo}
-            onImageClick={handleImageClick}
-          />
-          <TodoList
-            todos={filteredTodos}
-            onToggleComplete={handleToggleComplete}
-            onEdit={handleEditTodo}
-            onImageClick={handleImageClick}
-            categoryChangedTodoId={categoryChangedTodoId}
-          />
-          <CompletedSection
-            todos={todos}
-            onToggleComplete={handleToggleComplete}
-            onEdit={handleEditTodo}
-            onImageClick={handleImageClick}
-          />
-        </main>
+        {/* Main content - 2 column layout on desktop */}
+        <div className="flex flex-1 flex-col lg:flex-row">
+          {/* Left column - Todo list (fixed max width on desktop) */}
+          <aside className="w-full lg:w-[700px] lg:max-w-[700px] lg:shrink-0 lg:border-r lg:border-border">
+            <div className="flex flex-col gap-6 px-4 py-6 pb-24 lg:pb-6 lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
+              <CategoryFilters
+                categories={categories}
+                activeCategories={activeFilter}
+                onCategoryChange={setActiveFilter}
+                onAddCategory={handleAddCategory}
+                onDeleteCategory={handleDeleteCategory}
+              />
+              <ProcessingSection
+                todos={processingTodos}
+                onToggleComplete={handleToggleComplete}
+                onEdit={handleEditTodo}
+                onImageClick={handleImageClick}
+              />
+              <TodoList
+                todos={filteredTodos}
+                onToggleComplete={handleToggleComplete}
+                onEdit={handleEditTodo}
+                onImageClick={handleImageClick}
+                categoryChangedTodoId={categoryChangedTodoId}
+              />
+              <CompletedSection
+                todos={todos}
+                onToggleComplete={handleToggleComplete}
+                onEdit={handleEditTodo}
+                onImageClick={handleImageClick}
+              />
+            </div>
+          </aside>
+
+          {/* Right column - Work slots (flex-1 on desktop) */}
+          <main className="hidden lg:flex flex-1 flex-col">
+            <div className="flex-1 p-6 overflow-hidden">
+              <WorkSlots
+                slots={(workSlotsData ?? []) as WorkSlotData[]}
+                todos={todosForSlots}
+                onCreateSlot={handleCreateSlot}
+                onUpdateNotes={handleUpdateSlotNotes}
+                onClearSlot={handleClearSlot}
+                onDeleteSlot={handleDeleteSlot}
+                onCompleteTodo={handleCompleteTodoFromSlot}
+                idPrefix="desktop-"
+              />
+            </div>
+          </main>
+        </div>
+
+        {/* Mobile work slots (above input bar) */}
+        <div className="lg:hidden border-t border-border">
+          <div className="p-4">
+            <WorkSlots
+              slots={(workSlotsData ?? []) as WorkSlotData[]}
+              todos={todosForSlots}
+              onCreateSlot={handleCreateSlot}
+              onUpdateNotes={handleUpdateSlotNotes}
+              onClearSlot={handleClearSlot}
+              onDeleteSlot={handleDeleteSlot}
+              onCompleteTodo={handleCompleteTodoFromSlot}
+              idPrefix="mobile-"
+            />
+          </div>
+        </div>
+
         <InputBar
           value={inputValue}
           onChange={setInputValue}

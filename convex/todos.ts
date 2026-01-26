@@ -148,12 +148,23 @@ export const toggleComplete = mutation({
     const isCompleted = !todo.isCompleted;
     const completedAt = isCompleted ? Date.now() : undefined;
 
-    await ctx.db.patch(args.id, {
+    // Si on complète un to-do, le désactiver du slot
+    const updates: {
+      isCompleted: boolean;
+      completedAt?: number;
+      isActive?: boolean;
+    } = {
       isCompleted,
       completedAt,
-    });
+    };
 
-    return { ...todo, isCompleted, completedAt };
+    if (isCompleted) {
+      updates.isActive = false;
+    }
+
+    await ctx.db.patch(args.id, updates);
+
+    return { ...todo, isCompleted, completedAt, isActive: isCompleted ? false : todo.isActive };
   },
 });
 

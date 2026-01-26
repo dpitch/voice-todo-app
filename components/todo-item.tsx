@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Loader2 } from "lucide-react"
+import { GripVertical, Loader2, Zap } from "lucide-react"
 
 export type Priority = "low" | "medium" | "high"
 
@@ -18,6 +18,7 @@ export interface TodoItemProps {
   isCompleted: boolean
   isCategoryChanged?: boolean
   isProcessing?: boolean
+  isActive?: boolean // Marqué "en cours" dans un slot de travail
   onToggleComplete?: (checked: boolean) => void
   onEdit?: (newContent: string) => void
   imageUrls?: string[]
@@ -61,6 +62,7 @@ function TodoItem({
   isCompleted,
   isCategoryChanged,
   isProcessing,
+  isActive,
   onToggleComplete,
   onEdit,
   imageUrls,
@@ -170,6 +172,7 @@ function TodoItem({
       data-dragging={isDragging}
       data-category-changed={isCategoryChanged ?? false}
       data-processing={isProcessing ?? false}
+      data-active={isActive ?? false}
       className={cn(
         "flex flex-row items-center gap-3 py-3 px-4",
         isCompleted && "opacity-60",
@@ -177,6 +180,7 @@ function TodoItem({
         isCategoryChanged && "animate-category-change",
         isProcessing && "animate-processing-shimmer",
         isCelebrating && "animate-completion-flash",
+        isActive && "ring-2 ring-primary/50 bg-primary/5",
         className
       )}
     >
@@ -225,6 +229,15 @@ function TodoItem({
             <Loader2 className="size-4 animate-spin shrink-0" />
           )}
           {content}
+        </span>
+      )}
+      {isActive && (
+        <span
+          data-slot="active-indicator"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium shrink-0"
+        >
+          <Zap className="size-3" />
+          En cours
         </span>
       )}
       {imageUrls && imageUrls.length > 0 && (

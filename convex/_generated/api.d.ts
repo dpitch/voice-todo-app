@@ -9,7 +9,9 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as aiAssistant from "../aiAssistant.js";
 import type * as todos from "../todos.js";
+import type * as workSlots from "../workSlots.js";
 
 import type {
   ApiFromModules,
@@ -19,7 +21,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  aiAssistant: typeof aiAssistant;
   todos: typeof todos;
+  workSlots: typeof workSlots;
 }>;
 
 /**
