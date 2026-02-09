@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AiSuggestion } from "@/components/ai-suggestion"
+import { getCategoryColor } from "@/lib/category-colors"
 import { useDroppable } from "@dnd-kit/core"
 import { X, GripVertical, Check, Trash2 } from "lucide-react"
 import { type Priority } from "@/components/todo-item"
@@ -37,6 +38,7 @@ const priorityColors: Record<Priority, string> = {
   low: "bg-priority-low",
 }
 
+
 function WorkSlot({
   slotId,
   idPrefix = "",
@@ -50,10 +52,13 @@ function WorkSlot({
   className,
 }: WorkSlotProps) {
   const [localNotes, setLocalNotes] = useState(notes)
-  
-  // Sync local notes with prop when it changes externally
+  const isFocusedRef = React.useRef(false)
+
+  // Sync local notes with prop only when not actively editing
   React.useEffect(() => {
-    setLocalNotes(notes)
+    if (!isFocusedRef.current) {
+      setLocalNotes(notes)
+    }
   }, [notes])
 
   const droppableId = `${idPrefix}slot-${slotId}`;
@@ -137,32 +142,30 @@ function WorkSlot({
         {todo ? (
           <>
             {/* Todo card */}
-            <div className="flex items-start gap-2 p-2 bg-muted/50 rounded-md">
+            <div className="flex items-center gap-2 mb-1">
               <span
-                className={cn(
-                  "size-2.5 shrink-0 rounded-full mt-1.5",
-                  priorityColors[todo.priority]
-                )}
+                className="size-3 shrink-0 rounded-full"
+                style={{ backgroundColor: getCategoryColor(position) }}
               />
-              <div className="flex-1 min-w-0">
-                <Badge variant="secondary" className="mb-1 text-[10px] h-5">
-                  {todo.category}
-                </Badge>
-                <p className="text-sm leading-tight">{todo.content}</p>
-              </div>
+              <h3 className="text-lg font-bold tracking-tight truncate">
+                {todo.category}
+              </h3>
             </div>
+            <p className="text-sm text-muted-foreground leading-tight px-1">{todo.content}</p>
 
             {/* Notes textarea */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex flex-col">
               <label className="text-xs font-medium text-muted-foreground mb-1">
                 Notes
               </label>
               <textarea
                 value={localNotes}
                 onChange={handleNotesChange}
+                onFocus={() => { isFocusedRef.current = true }}
+                onBlur={() => { isFocusedRef.current = false; setLocalNotes(notes) }}
                 placeholder="Prends des notes pendant que tu travailles..."
                 className={cn(
-                  "flex-1 min-h-[100px] w-full rounded-md",
+                  "h-[320px] w-full rounded-md",
                   "bg-background border border-input",
                   "px-3 py-2 text-sm",
                   "placeholder:text-muted-foreground",

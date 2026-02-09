@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -14,6 +14,7 @@ import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { WorkSlots, type WorkSlotData } from "@/components/work-slots";
 import { type SlotTodo } from "@/components/work-slot";
 import { useAudioRecorder } from "@/lib/useAudioRecorder";
+import { PanelLeftClose, PanelLeft } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -39,6 +40,7 @@ export default function Home() {
   const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const {
     state: recorderState,
     audioBlob,
@@ -453,9 +455,15 @@ export default function Home() {
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
         {/* Main content - 2 column layout on desktop */}
-        <div className="flex flex-1 flex-col lg:flex-row">
-          {/* Left column - Todo list (fixed max width on desktop) */}
-          <aside className="w-full lg:w-[700px] lg:max-w-[700px] lg:shrink-0 lg:border-r lg:border-border">
+        <div className="flex flex-1 flex-col lg:flex-row relative">
+          {/* Left column - Todo list (collapsible on desktop) */}
+          <aside
+            className={`w-full lg:shrink-0 lg:border-r lg:border-border transition-all duration-300 ease-in-out ${
+              sidebarCollapsed
+                ? "lg:w-0 lg:max-w-0 lg:overflow-hidden lg:border-r-0"
+                : "lg:w-[700px] lg:max-w-[700px]"
+            }`}
+          >
             <div className="flex flex-col gap-6 px-4 py-6 pb-24 lg:pb-6 lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
               <CategoryFilters
                 categories={categories}
@@ -489,6 +497,15 @@ export default function Home() {
           {/* Right column - Work slots (flex-1 on desktop) */}
           <main className="hidden lg:flex flex-1 flex-col">
             <div className="flex-1 p-6 overflow-hidden">
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-muted transition-colors"
+                  title={sidebarCollapsed ? "Afficher la liste" : "Masquer la liste"}
+                >
+                  {sidebarCollapsed ? <PanelLeft className="size-4" /> : <PanelLeftClose className="size-4" />}
+                </button>
+              </div>
               <WorkSlots
                 slots={(workSlotsData ?? []) as WorkSlotData[]}
                 todos={todosForSlots}

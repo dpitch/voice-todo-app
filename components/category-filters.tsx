@@ -7,6 +7,7 @@ import { useDroppable } from "@dnd-kit/core"
 import { Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getCategoryColor } from "@/lib/category-colors"
 
 export interface CategoryFiltersProps {
   categories: string[]
@@ -19,13 +20,15 @@ export interface CategoryFiltersProps {
 
 interface CategoryChipProps {
   category: string
+  index: number
   isActive: boolean
   onClick: (event: React.MouseEvent) => void
   onDelete?: () => void
   showDelete?: boolean
 }
 
-function CategoryChip({ category, isActive, onClick, onDelete, showDelete }: CategoryChipProps) {
+function CategoryChip({ category, index, isActive, onClick, onDelete, showDelete }: CategoryChipProps) {
+  const color = getCategoryColor(index)
   const { isOver, setNodeRef } = useDroppable({
     id: `category-drop-${category}`,
     data: {
@@ -48,12 +51,13 @@ function CategoryChip({ category, isActive, onClick, onDelete, showDelete }: Cat
           "inline-flex items-center rounded-full px-3 py-1",
           "text-sm font-medium transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          isActive
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground hover:bg-muted/80",
-          isOver && "ring-2 ring-primary ring-offset-2 bg-primary/20",
+          isOver && "ring-2 ring-primary ring-offset-2",
           showDelete && "pr-7"
         )}
+        style={{
+          backgroundColor: isActive ? color : `${color}30`,
+          color: isActive ? "white" : `${color}`,
+        }}
         aria-pressed={isActive}
       >
         {category}
@@ -221,12 +225,13 @@ function CategoryFilters({
               <X className="size-3.5" />
             </button>
           )}
-          {categories.map((category) => {
+          {categories.map((category, index) => {
             const isActive = activeCategories.includes(category)
             return (
               <CategoryChip
                 key={category}
                 category={category}
+                index={index}
                 isActive={isActive}
                 onClick={(e) => handleChipClick(category, e)}
                 onDelete={onDeleteCategory ? () => onDeleteCategory(category) : undefined}

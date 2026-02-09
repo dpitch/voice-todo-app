@@ -75,7 +75,7 @@ function WorkSlots({
       <div
         data-slot="slots-container"
         className={cn(
-          "flex-1 flex gap-4 overflow-x-auto pb-4",
+          "flex-1 flex items-start gap-4 overflow-x-auto pb-4",
           "scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
         )}
       >

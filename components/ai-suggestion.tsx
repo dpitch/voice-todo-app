@@ -52,47 +52,12 @@ function AiSuggestion({
     }
   }, [generateSuggestion, todoContent, todoCategory, currentNotes, isLoading])
 
-  // Generate initial suggestion when component mounts or todo changes
+  // Reset suggestion when todo changes
   useEffect(() => {
     hasGeneratedRef.current = false
     setSuggestion(null)
     lastNotesRef.current = ""
-    
-    // Small delay before generating initial suggestion
-    const timer = setTimeout(() => {
-      fetchSuggestion()
-    }, 500)
-    
-    return () => clearTimeout(timer)
-  }, [todoContent, todoCategory]) // Only regenerate when todo changes, not notes
-
-  // Debounce notes changes to regenerate suggestion
-  useEffect(() => {
-    // Skip if notes haven't changed meaningfully (at least 20 chars difference)
-    const notesDiff = Math.abs(currentNotes.length - lastNotesRef.current.length)
-    if (notesDiff < 20 && hasGeneratedRef.current) {
-      return
-    }
-
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    // Set new timer to regenerate after 2 seconds of no typing
-    debounceTimerRef.current = setTimeout(() => {
-      if (currentNotes !== lastNotesRef.current) {
-        lastNotesRef.current = currentNotes
-        fetchSuggestion()
-      }
-    }, 2000)
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-    }
-  }, [currentNotes, fetchSuggestion])
+  }, [todoContent, todoCategory])
 
   const handleRefresh = () => {
     fetchSuggestion()
