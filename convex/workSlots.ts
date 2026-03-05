@@ -39,6 +39,55 @@ export const create = mutation({
   },
 });
 
+// Créer un slot et y assigner un to-do en une seule opération
+export const createAndAssign = mutation({
+  args: {
+    todoId: v.id("todos"),
+  },
+  handler: async (ctx, args) => {
+    const todo = await ctx.db.get(args.todoId);
+    if (!todo) {
+      throw new Error("Todo not found");
+    }
+
+    // Si le to-do était déjà dans un autre slot, libérer ce slot
+    const existingSlot = await ctx.db
+      .query("workSlots")
+      .withIndex("by_todoId", (q) => q.eq("todoId", args.todoId))
+      .first();
+
+    if (existingSlot) {
+      await ctx.db.patch(existingSlot._id, {
+        todoId: undefined,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Trouver la position maximale existante
+    const lastSlot = await ctx.db
+      .query("workSlots")
+      .withIndex("by_position")
+      .order("desc")
+      .first();
+
+    const nextPosition = lastSlot ? lastSlot.position + 1 : 0;
+    const now = Date.now();
+
+    const slotId = await ctx.db.insert("workSlots", {
+      todoId: args.todoId,
+      position: nextPosition,
+      notes: "",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Marquer le to-do comme actif
+    await ctx.db.patch(args.todoId, { isActive: true });
+
+    return slotId;
+  },
+});
+
 // Assigner un to-do à un slot
 export const assignTodo = mutation({
   args: {

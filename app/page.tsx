@@ -106,6 +106,7 @@ export default function Home() {
   // Work Slots queries and mutations
   const workSlotsData = useQuery(api.workSlots.list);
   const createWorkSlot = useMutation(api.workSlots.create);
+  const createAndAssignSlot = useMutation(api.workSlots.createAndAssign);
   const assignTodoToSlot = useMutation(api.workSlots.assignTodo);
   const updateSlotNotes = useMutation(api.workSlots.updateNotes);
   const clearWorkSlot = useMutation(api.workSlots.clear);
@@ -364,6 +365,10 @@ export default function Home() {
     await deleteWorkSlot({ slotId });
   };
 
+  const handleSendToWorkSlot = async (todoId: string) => {
+    await createAndAssignSlot({ todoId: todoId as Id<"todos"> });
+  };
+
   const handleCompleteTodoFromSlot = async (todoId: string) => {
     await toggleComplete({ id: todoId as Id<"todos"> });
   };
@@ -522,6 +527,7 @@ export default function Home() {
                 todos={filteredTodos}
                 onToggleComplete={handleToggleComplete}
                 onEdit={handleEditTodo}
+                onSendToWorkSlot={handleSendToWorkSlot}
                 onImageClick={handleImageClick}
                 categoryChangedTodoId={categoryChangedTodoId}
               />

@@ -30,6 +30,7 @@ export interface TodoListProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
   onEdit?: (id: string, newContent: string) => void
+  onSendToWorkSlot?: (id: string) => void
   onImageClick?: (todoId: string, imageIndex: number) => void
   className?: string
   categoryChangedTodoId?: string | null
@@ -49,6 +50,7 @@ interface CategorySectionProps {
   todos: Todo[]
   onToggleComplete?: (id: string, checked: boolean) => void
   onEdit?: (id: string, newContent: string) => void
+  onSendToWorkSlot?: (id: string) => void
   onImageClick?: (todoId: string, imageIndex: number) => void
   defaultOpen?: boolean
   categoryChangedTodoId?: string | null
@@ -59,6 +61,7 @@ function CategorySection({
   todos,
   onToggleComplete,
   onEdit,
+  onSendToWorkSlot,
   onImageClick,
   defaultOpen = true,
   categoryChangedTodoId,
@@ -128,6 +131,11 @@ function CategorySection({
                       ? (newContent) => onEdit(todo.id, newContent)
                       : undefined
                   }
+                  onSendToWorkSlot={
+                    onSendToWorkSlot
+                      ? () => onSendToWorkSlot(todo.id)
+                      : undefined
+                  }
                 />
               </li>
             ))}
@@ -138,7 +146,7 @@ function CategorySection({
   )
 }
 
-function TodoList({ todos, onToggleComplete, onEdit, onImageClick, className, categoryChangedTodoId }: TodoListProps) {
+function TodoList({ todos, onToggleComplete, onEdit, onSendToWorkSlot, onImageClick, className, categoryChangedTodoId }: TodoListProps) {
   const groupedTodos = groupTodosByCategory(todos)
   const categories = Array.from(groupedTodos.keys()).sort()
 
@@ -165,6 +173,7 @@ function TodoList({ todos, onToggleComplete, onEdit, onImageClick, className, ca
           todos={groupedTodos.get(category)!}
           onToggleComplete={onToggleComplete}
           onEdit={onEdit}
+          onSendToWorkSlot={onSendToWorkSlot}
           onImageClick={onImageClick}
           categoryChangedTodoId={categoryChangedTodoId}
         />

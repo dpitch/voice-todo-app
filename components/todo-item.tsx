@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Loader2, Zap } from "lucide-react"
+import { GripVertical, Loader2, Zap, ArrowRightToLine } from "lucide-react"
 
 export type Priority = "low" | "medium" | "high"
 
@@ -21,6 +21,7 @@ export interface TodoItemProps {
   isActive?: boolean // Marqué "en cours" dans un slot de travail
   onToggleComplete?: (checked: boolean) => void
   onEdit?: (newContent: string) => void
+  onSendToWorkSlot?: () => void
   imageUrls?: string[]
   onImageClick?: (index: number) => void
   className?: string
@@ -65,6 +66,7 @@ function TodoItem({
   isActive,
   onToggleComplete,
   onEdit,
+  onSendToWorkSlot,
   imageUrls,
   onImageClick,
   className,
@@ -230,6 +232,17 @@ function TodoItem({
           )}
           {content}
         </span>
+      )}
+      {!isCompleted && !isProcessing && !isActive && onSendToWorkSlot && (
+        <button
+          type="button"
+          data-slot="send-to-slot"
+          onClick={onSendToWorkSlot}
+          className="shrink-0 size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+          title="Envoyer dans un slot de travail"
+        >
+          <ArrowRightToLine className="size-3.5" />
+        </button>
       )}
       {isActive && (
         <span
