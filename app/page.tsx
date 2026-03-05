@@ -41,6 +41,14 @@ export default function Home() {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(700);
+  const isResizingRef = useRef(false);
+
+  // Restore sidebar width from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-width");
+    if (saved) setSidebarWidth(Number(saved));
+  }, []);
   const {
     state: recorderState,
     audioBlob,
@@ -430,6 +438,37 @@ export default function Home() {
     }
   }, [categoryChangedTodoId]);
 
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const newWidth = Math.min(Math.max(startWidth + (e.clientX - startX), 300), window.innerWidth * 0.7);
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizingRef.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      // Save to localStorage
+      setSidebarWidth((w) => {
+        localStorage.setItem("sidebar-width", String(w));
+        return w;
+      });
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [sidebarWidth]);
+
   const activeDragTodo = activeDragId
     ? todos.find((t) => t.id === activeDragId)
     : null;
@@ -458,11 +497,12 @@ export default function Home() {
         <div className="flex flex-1 flex-col lg:flex-row relative">
           {/* Left column - Todo list (collapsible on desktop) */}
           <aside
-            className={`w-full lg:shrink-0 lg:border-r lg:border-border transition-all duration-300 ease-in-out ${
+            className={`w-full lg:shrink-0 lg:border-r lg:border-border ${
               sidebarCollapsed
-                ? "lg:w-0 lg:max-w-0 lg:overflow-hidden lg:border-r-0"
-                : "lg:w-[700px] lg:max-w-[700px]"
+                ? "lg:w-0 lg:max-w-0 lg:overflow-hidden lg:border-r-0 transition-all duration-300 ease-in-out"
+                : ""
             }`}
+            style={!sidebarCollapsed ? { ["--sidebar-w" as string]: `${sidebarWidth}px` } : undefined}
           >
             <div className="flex flex-col gap-6 px-4 py-6 pb-24 lg:pb-6 lg:h-[calc(100vh-64px)] lg:overflow-y-auto">
               <CategoryFilters
@@ -493,6 +533,16 @@ export default function Home() {
               />
             </div>
           </aside>
+
+          {/* Resize handle */}
+          {!sidebarCollapsed && (
+            <div
+              onMouseDown={handleResizeStart}
+              className="hidden lg:flex w-1.5 cursor-col-resize items-center justify-center hover:bg-primary/10 active:bg-primary/20 transition-colors shrink-0 group"
+            >
+              <div className="w-0.5 h-8 rounded-full bg-border group-hover:bg-primary/40 group-active:bg-primary/60 transition-colors" />
+            </div>
+          )}
 
           {/* Right column - Work slots (flex-1 on desktop) */}
           <main className="hidden lg:flex flex-1 flex-col">
