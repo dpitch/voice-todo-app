@@ -24,6 +24,7 @@ export interface Todo {
   imageUrls?: string[]
   isProcessing?: boolean
   isActive?: boolean
+  notes?: string
 }
 
 export interface TodoListProps {
@@ -115,6 +116,7 @@ function CategorySection({
                   isCategoryChanged={todo.id === categoryChangedTodoId}
                   isProcessing={todo.isProcessing}
                   isActive={todo.isActive}
+                  notes={todo.notes}
                   imageUrls={todo.imageUrls}
                   onImageClick={
                     onImageClick

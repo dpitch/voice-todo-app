@@ -197,6 +197,7 @@ export default function Home() {
       imageUrls: imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
       isProcessing: todo.isProcessing ?? false,
       isActive: todo.isActive ?? false,
+      notes: todo.notes,
     };
   });
 

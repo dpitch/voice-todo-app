@@ -71,6 +71,7 @@ function CompletedSection({
                 priority={todo.priority}
                 isCompleted={todo.isCompleted}
                 isProcessing={todo.isProcessing}
+                notes={todo.notes}
                 imageUrls={todo.imageUrls}
                 onImageClick={
                   onImageClick

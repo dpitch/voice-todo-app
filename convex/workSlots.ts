@@ -73,10 +73,11 @@ export const createAndAssign = mutation({
     const nextPosition = lastSlot ? lastSlot.position + 1 : 0;
     const now = Date.now();
 
+    // Restaurer les notes sauvegardées du to-do si elles existent
     const slotId = await ctx.db.insert("workSlots", {
       todoId: args.todoId,
       position: nextPosition,
-      notes: "",
+      notes: todo.notes ?? "",
       createdAt: now,
       updatedAt: now,
     });
@@ -118,14 +119,19 @@ export const assignTodo = mutation({
       });
     }
 
-    // Si le slot cible avait déjà un to-do, le marquer comme non-actif
+    // Si le slot cible avait déjà un to-do, sauvegarder les notes et le marquer comme non-actif
     if (slot.todoId) {
-      await ctx.db.patch(slot.todoId, { isActive: false });
+      const updates: { isActive: boolean; notes?: string } = { isActive: false };
+      if (slot.notes.trim()) {
+        updates.notes = slot.notes;
+      }
+      await ctx.db.patch(slot.todoId, updates);
     }
 
-    // Assigner le nouveau to-do au slot
+    // Assigner le nouveau to-do au slot, restaurer ses notes sauvegardées
     await ctx.db.patch(args.slotId, {
       todoId: args.todoId,
+      notes: todo.notes ?? "",
       updatedAt: Date.now(),
     });
 
@@ -153,6 +159,11 @@ export const updateNotes = mutation({
       updatedAt: Date.now(),
     });
 
+    // Aussi sauvegarder sur le to-do en temps réel
+    if (slot.todoId) {
+      await ctx.db.patch(slot.todoId, { notes: args.notes });
+    }
+
     return args.slotId;
   },
 });
@@ -168,18 +179,22 @@ export const clear = mutation({
       throw new Error("Slot not found");
     }
 
-    // Si le slot avait un to-do et des notes, archiver les notes
-    if (slot.todoId && slot.notes.trim()) {
-      await ctx.db.insert("archivedNotes", {
-        todoId: slot.todoId,
-        notes: slot.notes,
-        archivedAt: Date.now(),
-      });
-    }
-
-    // Marquer le to-do comme non-actif si présent
+    // Sauvegarder les notes sur le to-do et le marquer comme non-actif
     if (slot.todoId) {
-      await ctx.db.patch(slot.todoId, { isActive: false });
+      const updates: { isActive: boolean; notes?: string } = { isActive: false };
+      if (slot.notes.trim()) {
+        updates.notes = slot.notes;
+      }
+      await ctx.db.patch(slot.todoId, updates);
+
+      // Archiver aussi les notes
+      if (slot.notes.trim()) {
+        await ctx.db.insert("archivedNotes", {
+          todoId: slot.todoId,
+          notes: slot.notes,
+          archivedAt: Date.now(),
+        });
+      }
     }
 
     // Vider le slot
@@ -204,18 +219,22 @@ export const remove = mutation({
       throw new Error("Slot not found");
     }
 
-    // Si le slot avait un to-do et des notes, archiver les notes
-    if (slot.todoId && slot.notes.trim()) {
-      await ctx.db.insert("archivedNotes", {
-        todoId: slot.todoId,
-        notes: slot.notes,
-        archivedAt: Date.now(),
-      });
-    }
-
-    // Marquer le to-do comme non-actif si présent
+    // Sauvegarder les notes sur le to-do et le marquer comme non-actif
     if (slot.todoId) {
-      await ctx.db.patch(slot.todoId, { isActive: false });
+      const updates: { isActive: boolean; notes?: string } = { isActive: false };
+      if (slot.notes.trim()) {
+        updates.notes = slot.notes;
+      }
+      await ctx.db.patch(slot.todoId, updates);
+
+      // Archiver aussi les notes
+      if (slot.notes.trim()) {
+        await ctx.db.insert("archivedNotes", {
+          todoId: slot.todoId,
+          notes: slot.notes,
+          archivedAt: Date.now(),
+        });
+      }
     }
 
     await ctx.db.delete(args.slotId);

@@ -12,6 +12,7 @@ export default defineSchema({
     imageStorageIds: v.optional(v.array(v.id("_storage"))),
     isProcessing: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()), // Marqué "en cours" dans un slot
+    notes: v.optional(v.string()), // Notes sauvegardées quand retiré d'un slot
   })
     .index("by_category", ["category"])
     .index("by_priority", ["priority"])

@@ -7,7 +7,14 @@ import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Loader2, Zap, ArrowRightToLine } from "lucide-react"
+import { GripVertical, Loader2, Zap, ArrowRightToLine, StickyNote } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export type Priority = "low" | "medium" | "high"
 
@@ -22,6 +29,7 @@ export interface TodoItemProps {
   onToggleComplete?: (checked: boolean) => void
   onEdit?: (newContent: string) => void
   onSendToWorkSlot?: () => void
+  notes?: string
   imageUrls?: string[]
   onImageClick?: (index: number) => void
   className?: string
@@ -67,6 +75,7 @@ function TodoItem({
   onToggleComplete,
   onEdit,
   onSendToWorkSlot,
+  notes,
   imageUrls,
   onImageClick,
   className,
@@ -252,6 +261,28 @@ function TodoItem({
           <Zap className="size-3" />
           En cours
         </span>
+      )}
+      {notes && notes.trim() && !isActive && (
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              data-slot="notes-indicator"
+              className="shrink-0 size-7 inline-flex items-center justify-center rounded-md text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 transition-colors"
+              title="Voir les notes"
+            >
+              <StickyNote className="size-3.5" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Notes</DialogTitle>
+            </DialogHeader>
+            <div className="whitespace-pre-wrap text-sm text-muted-foreground max-h-[60vh] overflow-y-auto">
+              {notes}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
       {imageUrls && imageUrls.length > 0 && (
         <div data-slot="image-thumbnails" className="flex gap-1">
