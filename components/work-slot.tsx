@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AiSuggestion } from "@/components/ai-suggestion"
 import { getCategoryColor } from "@/lib/category-colors"
-import { useDroppable } from "@dnd-kit/core"
+import { useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { X, GripVertical, Check, Trash2 } from "lucide-react"
 import { type Priority } from "@/components/todo-item"
 
@@ -61,15 +62,28 @@ function WorkSlot({
     }
   }, [notes])
 
-  const droppableId = `${idPrefix}slot-${slotId}`;
-  const { isOver, setNodeRef } = useDroppable({
-    id: droppableId,
+  const sortableId = `${idPrefix}slot-${slotId}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isOver,
+  } = useSortable({
+    id: sortableId,
     data: {
       type: "workSlot",
       slotId,
       position,
     },
   })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
 
   const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newNotes = e.target.value
@@ -94,12 +108,14 @@ function WorkSlot({
   return (
     <Card
       ref={setNodeRef}
+      style={style}
       data-slot="work-slot"
       data-has-todo={!!todo}
       data-is-over={isOver}
       className={cn(
-        "flex flex-col min-w-[364px] max-w-[416px] w-full",
+        "flex flex-col min-w-[309px] max-w-[354px] w-full",
         "transition-all duration-200",
+        isDragging && "opacity-50",
         isOver && "ring-2 ring-primary ring-offset-2",
         !todo && "border-dashed bg-transparent",
         className
@@ -108,7 +124,15 @@ function WorkSlot({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
-          <GripVertical className="size-4 text-muted-foreground cursor-grab" />
+          <button
+            type="button"
+            className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+            aria-label="Drag to reorder slot"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </button>
           <span className="text-xs font-medium text-muted-foreground">
             Slot {position + 1}
           </span>

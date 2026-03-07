@@ -111,6 +111,7 @@ export default function Home() {
   const updateSlotNotes = useMutation(api.workSlots.updateNotes);
   const clearWorkSlot = useMutation(api.workSlots.clear);
   const deleteWorkSlot = useMutation(api.workSlots.remove);
+  const reorderWorkSlot = useMutation(api.workSlots.reorder);
 
   const voiceState = isProcessingVoice ? "processing" : recorderState;
   // Only block input during voice recording conversion or image upload (not text processing)
@@ -383,18 +384,31 @@ export default function Home() {
 
     if (!over) return;
 
+    const activeData = active.data.current;
     const overData = over.data.current;
-    const todoId = String(active.id);
 
-    // Check if dropped on a work slot
-    if (overData?.type === "workSlot") {
-      const slotId = overData.slotId as Id<"workSlots">;
-      assignTodoToSlot({
-        slotId,
-        todoId: todoId as Id<"todos">,
-      });
+    // Slot reordering: a slot was dragged onto another slot
+    if (activeData?.type === "workSlot" && overData?.type === "workSlot") {
+      const activeSlotId = activeData.slotId as Id<"workSlots">;
+      const overPosition = overData.position as number;
+      if (activeData.position !== overPosition) {
+        reorderWorkSlot({
+          slotId: activeSlotId,
+          newPosition: overPosition,
+        });
+      }
       return;
     }
+
+    // Todo dropped on a work slot
+    if (activeData?.type === "todo" && overData?.type === "workSlot") {
+      const slotId = overData.slotId as Id<"workSlots">;
+      const todoId = activeData.todoId as Id<"todos">;
+      assignTodoToSlot({ slotId, todoId });
+      return;
+    }
+
+    const todoId = String(active.id);
 
     // Check if dropped on a category chip
     if (overData?.type === "category") {

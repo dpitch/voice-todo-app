@@ -7,6 +7,10 @@ import { WorkSlot, type SlotTodo } from "@/components/work-slot"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { Id } from "@/convex/_generated/dataModel"
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable"
 
 export interface WorkSlotData {
   _id: Id<"workSlots">
@@ -97,23 +101,28 @@ function WorkSlots({
             </div>
           </div>
         ) : (
-          slots.map((slot) => {
-            const todo = slot.todoId ? todos.get(slot.todoId) : undefined
-            return (
-              <WorkSlot
-                key={slot._id}
-                slotId={slot._id}
-                idPrefix={idPrefix}
-                position={slot.position}
-                todo={todo}
-                notes={slot.notes}
-                onNotesChange={handleNotesChange}
-                onClear={handleClear}
-                onDelete={handleDelete}
-                onComplete={onCompleteTodo}
-              />
-            )
-          })
+          <SortableContext
+            items={slots.map((s) => `${idPrefix}slot-${s._id}`)}
+            strategy={horizontalListSortingStrategy}
+          >
+            {slots.map((slot) => {
+              const todo = slot.todoId ? todos.get(slot.todoId) : undefined
+              return (
+                <WorkSlot
+                  key={slot._id}
+                  slotId={slot._id}
+                  idPrefix={idPrefix}
+                  position={slot.position}
+                  todo={todo}
+                  notes={slot.notes}
+                  onNotesChange={handleNotesChange}
+                  onClear={handleClear}
+                  onDelete={handleDelete}
+                  onComplete={onCompleteTodo}
+                />
+              )
+            })}
+          </SortableContext>
         )}
       </div>
     </div>
