@@ -112,6 +112,7 @@ export default function Home() {
   const clearWorkSlot = useMutation(api.workSlots.clear);
   const deleteWorkSlot = useMutation(api.workSlots.remove);
   const reorderWorkSlot = useMutation(api.workSlots.reorder);
+  const moveSlotToRow = useMutation(api.workSlots.moveToRow);
 
   const voiceState = isProcessingVoice ? "processing" : recorderState;
   // Only block input during voice recording conversion or image upload (not text processing)
@@ -375,6 +376,10 @@ export default function Home() {
     await toggleComplete({ id: todoId as Id<"todos"> });
   };
 
+  const handleMoveSlotToRow = async (slotId: Id<"workSlots">, targetRow: number) => {
+    await moveSlotToRow({ slotId, targetRow });
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(String(event.active.id));
   };
@@ -391,12 +396,24 @@ export default function Home() {
     // Slot reordering: a slot was dragged onto another slot
     if (activeData?.type === "workSlot" && overData?.type === "workSlot") {
       const activeSlotId = activeData.slotId as Id<"workSlots">;
-      const overPosition = overData.position as number;
-      if (activeData.position !== overPosition) {
-        reorderWorkSlot({
+      const activeRow = activeData.row as number ?? 0;
+      const overRow = overData.row as number ?? 0;
+
+      // Cross-row move: move to the other row
+      if (activeRow !== overRow) {
+        moveSlotToRow({
           slotId: activeSlotId,
-          newPosition: overPosition,
+          targetRow: overRow,
         });
+      } else {
+        // Same row reorder
+        const overPosition = overData.position as number;
+        if (activeData.position !== overPosition) {
+          reorderWorkSlot({
+            slotId: activeSlotId,
+            newPosition: overPosition,
+          });
+        }
       }
       return;
     }
@@ -585,6 +602,7 @@ export default function Home() {
                 onClearSlot={handleClearSlot}
                 onDeleteSlot={handleDeleteSlot}
                 onCompleteTodo={handleCompleteTodoFromSlot}
+                onMoveToRow={handleMoveSlotToRow}
                 idPrefix="desktop-"
               />
             </div>
@@ -602,6 +620,7 @@ export default function Home() {
               onClearSlot={handleClearSlot}
               onDeleteSlot={handleDeleteSlot}
               onCompleteTodo={handleCompleteTodoFromSlot}
+              onMoveToRow={handleMoveSlotToRow}
               idPrefix="mobile-"
             />
           </div>

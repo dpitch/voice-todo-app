@@ -1,15 +1,22 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Liste tous les slots triés par position
+// Liste tous les slots triés par row puis position
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const slots = await ctx.db
       .query("workSlots")
       .withIndex("by_position")
       .order("asc")
       .collect();
+    // Sort by row (defaulting to 0) then position
+    return slots.sort((a, b) => {
+      const rowA = a.row ?? 0;
+      const rowB = b.row ?? 0;
+      if (rowA !== rowB) return rowA - rowB;
+      return a.position - b.position;
+    });
   },
 });
 
@@ -17,19 +24,18 @@ export const list = query({
 export const create = mutation({
   args: {},
   handler: async (ctx) => {
-    // Trouver la position maximale existante
+    // Trouver la position maximale dans row 0
     const slots = await ctx.db
       .query("workSlots")
-      .withIndex("by_position")
-      .order("desc")
-      .first();
-    
-    const nextPosition = slots ? slots.position + 1 : 0;
+      .collect();
+    const row0Slots = slots.filter((s) => (s.row ?? 0) === 0);
+    const maxPos = row0Slots.reduce((max, s) => Math.max(max, s.position), -1);
     const now = Date.now();
 
     const slotId = await ctx.db.insert("workSlots", {
       todoId: undefined,
-      position: nextPosition,
+      position: maxPos + 1,
+      row: 0,
       notes: "",
       createdAt: now,
       updatedAt: now,
@@ -63,20 +69,17 @@ export const createAndAssign = mutation({
       });
     }
 
-    // Trouver la position maximale existante
-    const lastSlot = await ctx.db
-      .query("workSlots")
-      .withIndex("by_position")
-      .order("desc")
-      .first();
-
-    const nextPosition = lastSlot ? lastSlot.position + 1 : 0;
+    // Trouver la position maximale dans row 0
+    const slots = await ctx.db.query("workSlots").collect();
+    const row0Slots = slots.filter((s) => (s.row ?? 0) === 0);
+    const maxPos = row0Slots.reduce((max, s) => Math.max(max, s.position), -1);
     const now = Date.now();
 
     // Restaurer les notes sauvegardées du to-do si elles existent
     const slotId = await ctx.db.insert("workSlots", {
       todoId: args.todoId,
-      position: nextPosition,
+      position: maxPos + 1,
+      row: 0,
       notes: todo.notes ?? "",
       createdAt: now,
       updatedAt: now,
@@ -111,7 +114,7 @@ export const assignTodo = mutation({
       .query("workSlots")
       .withIndex("by_todoId", (q) => q.eq("todoId", args.todoId))
       .first();
-    
+
     if (existingSlot && existingSlot._id !== args.slotId) {
       await ctx.db.patch(existingSlot._id, {
         todoId: undefined,
@@ -219,6 +222,8 @@ export const remove = mutation({
       throw new Error("Slot not found");
     }
 
+    const slotRow = slot.row ?? 0;
+
     // Sauvegarder les notes sur le to-do et le marquer comme non-actif
     if (slot.todoId) {
       const updates: { isActive: boolean; notes?: string } = { isActive: false };
@@ -239,16 +244,17 @@ export const remove = mutation({
 
     await ctx.db.delete(args.slotId);
 
-    // Réorganiser les positions des slots restants
-    const remainingSlots = await ctx.db
+    // Réorganiser les positions des slots restants dans la même row
+    const allSlots = await ctx.db
       .query("workSlots")
-      .withIndex("by_position")
-      .order("asc")
       .collect();
-    
-    for (let i = 0; i < remainingSlots.length; i++) {
-      if (remainingSlots[i].position !== i) {
-        await ctx.db.patch(remainingSlots[i]._id, { position: i });
+    const rowSlots = allSlots
+      .filter((s) => (s.row ?? 0) === slotRow)
+      .sort((a, b) => a.position - b.position);
+
+    for (let i = 0; i < rowSlots.length; i++) {
+      if (rowSlots[i].position !== i) {
+        await ctx.db.patch(rowSlots[i]._id, { position: i });
       }
     }
 
@@ -256,7 +262,7 @@ export const remove = mutation({
   },
 });
 
-// Réorganiser les positions des slots
+// Réorganiser les positions des slots (au sein d'une même row)
 export const reorder = mutation({
   args: {
     slotId: v.id("workSlots"),
@@ -268,21 +274,21 @@ export const reorder = mutation({
       throw new Error("Slot not found");
     }
 
+    const slotRow = slot.row ?? 0;
     const oldPosition = slot.position;
     if (oldPosition === args.newPosition) {
       return args.slotId;
     }
 
-    const allSlots = await ctx.db
-      .query("workSlots")
-      .withIndex("by_position")
-      .order("asc")
-      .collect();
+    const allSlots = await ctx.db.query("workSlots").collect();
+    const rowSlots = allSlots
+      .filter((s) => (s.row ?? 0) === slotRow)
+      .sort((a, b) => a.position - b.position);
 
     // Mettre à jour les positions
-    for (const s of allSlots) {
+    for (const s of rowSlots) {
       if (s._id === args.slotId) {
-        await ctx.db.patch(s._id, { 
+        await ctx.db.patch(s._id, {
           position: args.newPosition,
           updatedAt: Date.now(),
         });
@@ -298,6 +304,55 @@ export const reorder = mutation({
         }
       }
     }
+
+    return args.slotId;
+  },
+});
+
+// Déplacer un slot vers l'autre row (toggle focus <-> backburner)
+export const moveToRow = mutation({
+  args: {
+    slotId: v.id("workSlots"),
+    targetRow: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const slot = await ctx.db.get(args.slotId);
+    if (!slot) {
+      throw new Error("Slot not found");
+    }
+
+    const currentRow = slot.row ?? 0;
+    if (currentRow === args.targetRow) {
+      return args.slotId;
+    }
+
+    const allSlots = await ctx.db.query("workSlots").collect();
+
+    // Recalculer les positions de l'ancienne row (retirer le slot)
+    const oldRowSlots = allSlots
+      .filter((s) => (s.row ?? 0) === currentRow && s._id !== args.slotId)
+      .sort((a, b) => a.position - b.position);
+    for (let i = 0; i < oldRowSlots.length; i++) {
+      if (oldRowSlots[i].position !== i) {
+        await ctx.db.patch(oldRowSlots[i]._id, { position: i });
+      }
+    }
+
+    // Trouver la position max dans la target row
+    const targetRowSlots = allSlots.filter(
+      (s) => (s.row ?? 0) === args.targetRow
+    );
+    const maxPos = targetRowSlots.reduce(
+      (max, s) => Math.max(max, s.position),
+      -1
+    );
+
+    // Mettre à jour le slot
+    await ctx.db.patch(args.slotId, {
+      row: args.targetRow,
+      position: maxPos + 1,
+      updatedAt: Date.now(),
+    });
 
     return args.slotId;
   },

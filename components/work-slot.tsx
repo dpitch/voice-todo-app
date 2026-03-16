@@ -10,7 +10,7 @@ import { AiSuggestion } from "@/components/ai-suggestion"
 import { getCategoryColor } from "@/lib/category-colors"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { X, GripVertical, Check, Trash2 } from "lucide-react"
+import { X, GripVertical, Check, Trash2, ArrowDown, ArrowUp } from "lucide-react"
 import { type Priority } from "@/components/todo-item"
 
 export interface SlotTodo {
@@ -24,12 +24,14 @@ export interface WorkSlotProps {
   slotId: string
   idPrefix?: string // Pour différencier desktop/mobile
   position: number
+  row: number
   todo?: SlotTodo
   notes: string
   onNotesChange: (slotId: string, notes: string) => void
   onClear: (slotId: string) => void
   onDelete: (slotId: string) => void
   onComplete?: (todoId: string) => void
+  onMoveToRow: (slotId: string) => void
   className?: string
 }
 
@@ -44,12 +46,14 @@ function WorkSlot({
   slotId,
   idPrefix = "",
   position,
+  row,
   todo,
   notes,
   onNotesChange,
   onClear,
   onDelete,
   onComplete,
+  onMoveToRow,
   className,
 }: WorkSlotProps) {
   const [localNotes, setLocalNotes] = useState(notes)
@@ -77,6 +81,7 @@ function WorkSlot({
       type: "workSlot",
       slotId,
       position,
+      row,
     },
   })
 
@@ -104,6 +109,10 @@ function WorkSlot({
       onComplete(todo.id)
     }
   }, [todo, onComplete])
+
+  const handleMoveToRow = useCallback(() => {
+    onMoveToRow(slotId)
+  }, [slotId, onMoveToRow])
 
   return (
     <Card
@@ -138,6 +147,15 @@ function WorkSlot({
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={handleMoveToRow}
+            title={row === 0 ? "Mettre en attente" : "Remettre au focus"}
+          >
+            {row === 0 ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}
+          </Button>
           {todo && (
             <Button
               variant="ghost"

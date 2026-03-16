@@ -32,6 +32,7 @@ export default defineSchema({
   workSlots: defineTable({
     todoId: v.optional(v.id("todos")), // To-do assigné (optionnel)
     position: v.number(), // Position horizontale (0, 1, 2...)
+    row: v.optional(v.number()), // 0 = focus (défaut), 1 = backburner
     notes: v.string(), // Notes de travail
     createdAt: v.number(),
     updatedAt: v.number(),
